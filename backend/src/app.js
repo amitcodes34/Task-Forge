@@ -32,8 +32,12 @@ const { USE_REDIS } = require('./config/redis');
 
 // Middleware imports
 const errorHandler = require('./middleware/errorHandler');
+const performanceLogger = require('./middleware/performance');
 
 const app = express();
+
+// Track performance
+app.use(performanceLogger);
 
 // ---------------------------------------------------------------------------
 // Security Middleware

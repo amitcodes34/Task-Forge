@@ -110,6 +110,8 @@ const resetPassword = async (req, res, next) => {
 
 /**
  * GET /api/v1/auth/me
+ * IMPORTANT (Phase 5): NEVER cache this endpoint. 
+ * This returns user-specific personal data and authorization details. Caching it could leak data across sessions.
  */
 const getMe = async (req, res, next) => {
   try {

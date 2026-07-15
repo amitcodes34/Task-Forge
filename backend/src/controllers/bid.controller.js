@@ -4,6 +4,7 @@
 
 const bidService = require('../services/bid.service');
 const ApiResponse = require('../utils/ApiResponse');
+const { invalidatePattern } = require('../lib/cache');
 
 /**
  * POST /api/v1/projects/:id/bids
@@ -59,6 +60,8 @@ const deleteBid = async (req, res, next) => {
 const acceptBid = async (req, res, next) => {
   try {
     const result = await bidService.acceptBid(req.params.id, req.user.userId, { ip: req.ip });
+    await invalidatePattern('projects:*');
+    if (result.updatedProject) await invalidatePattern(`project:${result.updatedProject.id}`);
     ApiResponse.success(res, 200, 'Bid accepted. Project is now in progress!', { result });
   } catch (error) {
     next(error);
