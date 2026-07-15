@@ -1,0 +1,253 @@
+// =============================================================================
+// TaskForge – Prisma Database Schema
+// =============================================================================
+// This schema defines the full normalized PostgreSQL database structure.
+// All foreign keys, indexes, cascading rules, and constraints are declared here.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Roles assigned to every user at registration time.
+/// Admin accounts must be seeded manually – no public registration allowed.
+enum Role {
+  CLIENT
+  FREELANCER
+  ADMIN
+}
+
+/// Lifecycle states for a project.
+enum ProjectStatus {
+  OPEN        // Accepting bids
+  IN_PROGRESS // A bid was accepted; freelancer is working
+  DELIVERED   // Freelancer submitted the work
+  COMPLETED   // Client confirmed and closed the project
+  CANCELLED   // Client cancelled (only allowed when no bids exist)
+}
+
+/// States for an individual bid.
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// ---------------------------------------------------------------------------
+// Users
+// ---------------------------------------------------------------------------
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  firstName       String    @map("first_name")
+  lastName        String    @map("last_name")
+  role            Role      @default(CLIENT)
+  bio             String?
+  avatarUrl       String?   @map("avatar_url")
+  skills          String[]  @default([])
+  isEmailVerified Boolean   @default(false) @map("is_email_verified")
+  isBanned        Boolean   @default(false) @map("is_banned")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relations
+  projects              Project[]         @relation("ClientProjects")
+  bids                  Bid[]             @relation("FreelancerBids")
+  deliveries            Delivery[]        @relation("FreelancerDeliveries")
+  reviewsGiven          Review[]          @relation("ReviewsGiven")
+  reviewsReceived       Review[]          @relation("ReviewsReceived")
+  refreshTokens         RefreshToken[]
+  verificationTokens    VerificationToken[]
+  auditLogs             AuditLog[]        @relation("AuditActor")
+
+  @@index([email])
+  @@index([role])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
+
+model Project {
+  id              String        @id @default(uuid())
+  clientId        String        @map("client_id")
+  title           String
+  description     String
+  budget          Decimal       @db.Decimal(10, 2)
+  status          ProjectStatus @default(OPEN)
+  skillsRequired  String[]      @map("skills_required")
+  deadline        DateTime?
+  winningBidId    String?       @unique @map("winning_bid_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  // Relations
+  client      User       @relation("ClientProjects", fields: [clientId], references: [id], onDelete: Cascade)
+  bids        Bid[]      @relation("ProjectBids")
+  winningBid  Bid?       @relation("WinningBid", fields: [winningBidId], references: [id])
+  reviews     Review[]
+  deliveries  Delivery[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("projects")
+}
+
+// ---------------------------------------------------------------------------
+// Bids
+// ---------------------------------------------------------------------------
+
+model Bid {
+  id            String    @id @default(uuid())
+  projectId     String    @map("project_id")
+  freelancerId  String    @map("freelancer_id")
+  amount        Decimal   @db.Decimal(10, 2)
+  proposal      String
+  deliveryDays  Int       @map("delivery_days")
+  status        BidStatus @default(PENDING)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  project    Project  @relation("ProjectBids", fields: [projectId], references: [id], onDelete: Cascade)
+  freelancer User     @relation("FreelancerBids", fields: [freelancerId], references: [id], onDelete: Cascade)
+
+  // A project can have a bid as its winning bid
+  winningBidForProject Project? @relation("WinningBid")
+
+  // A freelancer can only bid once per project
+  @@unique([projectId, freelancerId])
+  @@index([projectId])
+  @@index([freelancerId])
+  @@map("bids")
+}
+
+// ---------------------------------------------------------------------------
+// Deliveries
+// ---------------------------------------------------------------------------
+
+model Delivery {
+  id            String   @id @default(uuid())
+  projectId     String   @map("project_id")
+  freelancerId  String   @map("freelancer_id")
+  note          String
+  attachmentUrl String?  @map("attachment_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  freelancer User    @relation("FreelancerDeliveries", fields: [freelancerId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([freelancerId])
+  @@map("deliveries")
+}
+
+// ---------------------------------------------------------------------------
+// Reviews
+// ---------------------------------------------------------------------------
+
+model Review {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  reviewerId  String   @map("reviewer_id")
+  targetId    String   @map("target_id")
+  rating      Int      // 1-5
+  comment     String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewer  User    @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  target    User    @relation("ReviewsReceived", fields: [targetId], references: [id], onDelete: Cascade)
+
+  // Prevent duplicate reviews: one reviewer per project per target
+  @@unique([projectId, reviewerId])
+  @@index([targetId])
+  @@index([projectId])
+  @@map("reviews")
+}
+
+// ---------------------------------------------------------------------------
+// Refresh Tokens
+// ---------------------------------------------------------------------------
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Email Verification & Password Reset Tokens (unified table)
+// ---------------------------------------------------------------------------
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+model VerificationToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  type      TokenType
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  usedAt    DateTime? @map("used_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Audit Logs - immutable record of important system actions
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorId      String?  @map("actor_id")     // nullable: system actions have no actor
+  action       String                         // e.g. "USER_LOGIN", "BID_ACCEPTED", "USER_BANNED"
+  resourceType String   @map("resource_type") // e.g. "User", "Project", "Bid"
+  resourceId   String?  @map("resource_id")
+  metadata     Json?                          // any extra context (JSONB)
+  ip           String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
