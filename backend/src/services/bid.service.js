@@ -42,7 +42,14 @@ const createBid = async (freelancerId, projectId, bidData, { ip } = {}) => {
   const bid = await bidRepo.createBid({ projectId, freelancerId, ...bidData });
 
   // Fire-and-forget: audit log + client notification
-  log({ actorId: freelancerId, action: AuditActions.BID_PLACED, resourceType: 'Bid', resourceId: bid.id, metadata: { projectId, amount: bidData.amount }, ip });
+  log({
+    actorId: freelancerId,
+    action: AuditActions.BID_PLACED,
+    resourceType: 'Bid',
+    resourceId: bid.id,
+    metadata: { projectId, amount: bidData.amount },
+    ip,
+  });
 
   // ---------------------------------------------------------------------------
   // Real-Time WebSocket Broadcast
@@ -66,36 +73,44 @@ const createBid = async (freelancerId, projectId, bidData, { ip } = {}) => {
     console.error('⚠️  WebSocket broadcast failed (non-fatal):', wsErr.message);
   }
 
-  // Notify client via background queue (Debounced in logic via Redis in real-world, 
+  // Notify client via background queue (Debounced in logic via Redis in real-world,
   // but for now we'll just push to queue or implement a simple in-memory map here.
   // We can push to the queue, and the worker handles it.)
   const projectWithClient = await projectRepo.findProjectById(projectId);
   if (projectWithClient?.client?.email) {
     const totalBids = (await bidRepo.findBidsByProjectId(projectId)).length;
     const clientName = `${projectWithClient.client.firstName} ${projectWithClient.client.lastName}`;
-    
+
     // Add job to BullMQ queue
-    await emailQueue.add('new_bid_notification', {
-      to: projectWithClient.client.email,
-      subject: `💼 New bid on your project "${project.title}"`,
-      templateName: 'new_bid_notification',
-      templateData: {
-        clientName,
-        projectTitle: project.title,
-        projectId,
-        totalBids,
+    await emailQueue.add(
+      'new_bid_notification',
+      {
+        to: projectWithClient.client.email,
+        subject: `💼 New bid on your project "${project.title}"`,
+        templateName: 'new_bid_notification',
+        templateData: {
+          clientName,
+          projectTitle: project.title,
+          projectId,
+          totalBids,
+        },
+      },
+      {
+        // Optional: BullMQ job options here (e.g. jobId to debounce)
+        jobId: `new_bid_${projectId}_${Date.now()}`, // Unique per bid
       }
-    }, {
-      // Optional: BullMQ job options here (e.g. jobId to debounce)
-      jobId: `new_bid_${projectId}_${Date.now()}` // Unique per bid
-    });
+    );
   }
 
   // Trigger AI Scoring in the background
   if (process.env.AI_SCORING_ENABLED === 'true') {
-    await scoringQueue.add('score_bid', { bidId: bid.id }, {
-      jobId: `score_bid_${bid.id}` // Prevent duplicate jobs
-    });
+    await scoringQueue.add(
+      'score_bid',
+      { bidId: bid.id },
+      {
+        jobId: `score_bid_${bid.id}`, // Prevent duplicate jobs
+      }
+    );
   }
 
   return bid;
@@ -112,9 +127,7 @@ const getBidsForProject = async (projectId, requestingUserId) => {
 
   // Only the project owner can see the bids on their project
   if (project.clientId !== requestingUserId) {
-    throw ApiError.forbidden(
-      'You do not have permission to view bids on this project.'
-    );
+    throw ApiError.forbidden('You do not have permission to view bids on this project.');
   }
 
   return bidRepo.findBidsByProjectId(projectId);
@@ -158,14 +171,19 @@ const deleteBid = async (bidId, freelancerId, { ip } = {}) => {
   }
 
   if (bid.status !== 'PENDING') {
-    throw ApiError.badRequest(
-      'Cannot delete a bid that has already been accepted or rejected.'
-    );
+    throw ApiError.badRequest('Cannot delete a bid that has already been accepted or rejected.');
   }
 
   await bidRepo.deleteBid(bidId);
 
-  log({ actorId: freelancerId, action: AuditActions.BID_WITHDRAWN, resourceType: 'Bid', resourceId: bidId, metadata: { projectId: bid.projectId }, ip });
+  log({
+    actorId: freelancerId,
+    action: AuditActions.BID_WITHDRAWN,
+    resourceType: 'Bid',
+    resourceId: bidId,
+    metadata: { projectId: bid.projectId },
+    ip,
+  });
 };
 
 // ---------------------------------------------------------------------------
@@ -188,9 +206,7 @@ const acceptBid = async (bidId, requestingUserId, { ip } = {}) => {
   }
 
   if (project.status !== 'OPEN') {
-    throw ApiError.badRequest(
-      `Cannot accept a bid on a project with status '${project.status}'.`
-    );
+    throw ApiError.badRequest(`Cannot accept a bid on a project with status '${project.status}'.`);
   }
 
   if (bid.status !== 'PENDING') {
@@ -205,14 +221,20 @@ const acceptBid = async (bidId, requestingUserId, { ip } = {}) => {
     action: AuditActions.BID_ACCEPTED,
     resourceType: 'Bid',
     resourceId: bidId,
-    metadata: { projectId: bid.projectId, freelancerId: bid.freelancerId, amount: bid.amount.toString() },
+    metadata: {
+      projectId: bid.projectId,
+      freelancerId: bid.freelancerId,
+      amount: bid.amount.toString(),
+    },
     ip,
   });
 
   // Notify the winning freelancer via background job queue
   const freelancerBid = await bidRepo.findBidById(bidId);
-  const freelancerUser = await require('../config/database').user.findUnique({ where: { id: freelancerBid.freelancerId } });
-  
+  const freelancerUser = await require('../config/database').user.findUnique({
+    where: { id: freelancerBid.freelancerId },
+  });
+
   if (freelancerUser?.email) {
     await emailQueue.add('bid_accepted', {
       to: freelancerUser.email,
@@ -222,7 +244,7 @@ const acceptBid = async (bidId, requestingUserId, { ip } = {}) => {
         freelancerName: freelancerUser.firstName || 'Freelancer',
         clientName: project.client ? project.client.firstName : 'The client',
         projectTitle: project.title,
-      }
+      },
     });
   }
 
@@ -240,7 +262,7 @@ const acceptBid = async (bidId, requestingUserId, { ip } = {}) => {
     data: {
       stripePaymentIntentId: intent.id,
       escrowStatus: 'pending',
-    }
+    },
   });
 
   result.client_secret = intent.client_secret;

@@ -11,7 +11,9 @@ const { invalidatePattern } = require('../lib/cache');
  */
 const createBid = async (req, res, next) => {
   try {
-    const bid = await bidService.createBid(req.user.userId, req.params.id, req.body, { ip: req.ip });
+    const bid = await bidService.createBid(req.user.userId, req.params.id, req.body, {
+      ip: req.ip,
+    });
     ApiResponse.created(res, 'Bid placed successfully.', { bid });
   } catch (error) {
     next(error);

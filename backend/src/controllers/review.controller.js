@@ -10,11 +10,7 @@ const ApiResponse = require('../utils/ApiResponse');
  */
 const createReview = async (req, res, next) => {
   try {
-    const review = await reviewService.createReview(
-      req.user.userId,
-      req.user.role,
-      req.body
-    );
+    const review = await reviewService.createReview(req.user.userId, req.user.role, req.body);
     ApiResponse.created(res, 'Review submitted successfully.', { review });
   } catch (error) {
     next(error);

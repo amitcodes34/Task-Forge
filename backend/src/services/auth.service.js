@@ -96,7 +96,14 @@ const login = async ({ email, password }, { ip } = {}) => {
   await authRepo.createRefreshToken(user.id, refreshToken);
 
   // Fire-and-forget audit log
-  log({ actorId: user.id, action: AuditActions.USER_LOGIN, resourceType: 'User', resourceId: user.id, metadata: { email: user.email, role: user.role }, ip });
+  log({
+    actorId: user.id,
+    action: AuditActions.USER_LOGIN,
+    resourceType: 'User',
+    resourceId: user.id,
+    metadata: { email: user.email, role: user.role },
+    ip,
+  });
 
   return {
     accessToken,

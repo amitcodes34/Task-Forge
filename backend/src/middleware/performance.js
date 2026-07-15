@@ -6,7 +6,7 @@ const performanceLogger = (req, res, next) => {
 
   res.on('finish', () => {
     const duration = Date.now() - start;
-    
+
     // Only log performance for GET /projects endpoints (list and detail)
     if (req.method === 'GET' && req.originalUrl.includes('/projects')) {
       const cacheStatus = res.getHeader('X-Cache') || 'MISS';

@@ -132,7 +132,9 @@ const getPlatformStats = async () => {
     prisma.user.count({ where: { deletedAt: null } }),
     prisma.user.count({ where: { role: 'FREELANCER', deletedAt: null } }),
     prisma.user.count({ where: { role: 'CLIENT', deletedAt: null } }),
-    prisma.project.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS', 'DELIVERED'] }, deletedAt: null } }),
+    prisma.project.count({
+      where: { status: { in: ['OPEN', 'IN_PROGRESS', 'DELIVERED'] }, deletedAt: null },
+    }),
     prisma.project.count({ where: { status: 'COMPLETED', deletedAt: null } }),
     prisma.bid.count({ where: { createdAt: { gte: today } } }),
     prisma.bid.count(),

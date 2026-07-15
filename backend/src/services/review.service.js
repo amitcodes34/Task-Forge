@@ -36,7 +36,9 @@ const createReview = async (reviewerId, reviewerRole, { projectId, targetId, rat
     }
     const winningBid = await bidRepo.findBidByIdRaw(project.winningBidId);
     if (!winningBid || winningBid.freelancerId !== targetId) {
-      throw ApiError.badRequest('As a client, you can only review the freelancer who completed your project.');
+      throw ApiError.badRequest(
+        'As a client, you can only review the freelancer who completed your project.'
+      );
     }
   } else if (reviewerRole === 'FREELANCER') {
     // Freelancer must have won the bid
@@ -49,7 +51,9 @@ const createReview = async (reviewerId, reviewerRole, { projectId, targetId, rat
     }
     // Freelancer can only review the project's client
     if (project.clientId !== targetId) {
-      throw ApiError.badRequest('As a freelancer, you can only review the client of your completed project.');
+      throw ApiError.badRequest(
+        'As a freelancer, you can only review the client of your completed project.'
+      );
     }
   } else {
     throw ApiError.forbidden('Admins cannot submit reviews.');

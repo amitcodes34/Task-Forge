@@ -1,7 +1,7 @@
 // =============================================================================
 // src/controllers/admin.controller.js – Admin HTTP Request Handlers
-// IMPORTANT (Phase 5): NEVER cache admin endpoints or anything containing 
-// sensitive system data. Caching these endpoints risks leaking platform-wide 
+// IMPORTANT (Phase 5): NEVER cache admin endpoints or anything containing
+// sensitive system data. Caching these endpoints risks leaking platform-wide
 // confidential information to unauthorized users.
 // =============================================================================
 

@@ -47,7 +47,9 @@ const registerSocketHandlers = (io) => {
       const decoded = jwt.verify(token, secret);
       // Attach the decoded user payload to the socket object for later use
       socket.user = decoded;
-      console.log(`🔑 [WS] Authenticated: user=${decoded.userId} (${decoded.role}), socket=${socket.id}`);
+      console.log(
+        `🔑 [WS] Authenticated: user=${decoded.userId} (${decoded.role}), socket=${socket.id}`
+      );
       next();
     } catch (err) {
       console.log(`🔒 [WS] Invalid token from socket ${socket.id}: ${err.message}`);

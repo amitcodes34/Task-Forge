@@ -23,9 +23,7 @@ const authenticate = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw ApiError.unauthorized(
-        'No authentication token provided. Please log in.'
-      );
+      throw ApiError.unauthorized('No authentication token provided. Please log in.');
     }
 
     const token = authHeader.split(' ')[1];

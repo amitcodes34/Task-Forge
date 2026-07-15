@@ -19,7 +19,14 @@ const ApiError = require('../utils/ApiError');
 const createProject = async (clientId, projectData, { ip } = {}) => {
   const project = await projectRepo.createProject({ clientId, ...projectData });
 
-  log({ actorId: clientId, action: AuditActions.PROJECT_CREATED, resourceType: 'Project', resourceId: project.id, metadata: { title: project.title }, ip });
+  log({
+    actorId: clientId,
+    action: AuditActions.PROJECT_CREATED,
+    resourceType: 'Project',
+    resourceId: project.id,
+    metadata: { title: project.title },
+    ip,
+  });
 
   return project;
 };
@@ -49,7 +56,17 @@ const getProjects = async (queryParams) => {
   const maxBudget = queryParams.maxBudget ? parseFloat(queryParams.maxBudget) : undefined;
   const skill = queryParams.skill ? String(queryParams.skill).trim() : undefined;
 
-  return projectRepo.findProjects({ page, limit, status, search, sortBy, sortOrder, minBudget, maxBudget, skill });
+  return projectRepo.findProjects({
+    page,
+    limit,
+    status,
+    search,
+    sortBy,
+    sortOrder,
+    minBudget,
+    maxBudget,
+    skill,
+  });
 };
 
 // ---------------------------------------------------------------------------
@@ -87,7 +104,14 @@ const updateProject = async (projectId, requestingUserId, updateData, { ip } = {
 
   const updated = await projectRepo.updateProject(projectId, updateData);
 
-  log({ actorId: requestingUserId, action: AuditActions.PROJECT_UPDATED, resourceType: 'Project', resourceId: projectId, metadata: { changes: Object.keys(updateData) }, ip });
+  log({
+    actorId: requestingUserId,
+    action: AuditActions.PROJECT_UPDATED,
+    resourceType: 'Project',
+    resourceId: projectId,
+    metadata: { changes: Object.keys(updateData) },
+    ip,
+  });
 
   return updated;
 };
@@ -116,7 +140,14 @@ const deleteProject = async (projectId, requestingUserId, { ip } = {}) => {
   // Soft delete: set deletedAt timestamp
   await projectRepo.softDeleteProject(projectId);
 
-  log({ actorId: requestingUserId, action: AuditActions.PROJECT_DELETED, resourceType: 'Project', resourceId: projectId, metadata: { title: project.title }, ip });
+  log({
+    actorId: requestingUserId,
+    action: AuditActions.PROJECT_DELETED,
+    resourceType: 'Project',
+    resourceId: projectId,
+    metadata: { title: project.title },
+    ip,
+  });
 };
 
 // ---------------------------------------------------------------------------
@@ -160,7 +191,13 @@ const deliverProject = async (projectId, requestingUserId, deliveryData, { ip } 
 
   const updated = await projectRepo.updateProject(projectId, { status: 'DELIVERED' });
 
-  log({ actorId: requestingUserId, action: AuditActions.PROJECT_DELIVERED, resourceType: 'Project', resourceId: projectId, ip });
+  log({
+    actorId: requestingUserId,
+    action: AuditActions.PROJECT_DELIVERED,
+    resourceType: 'Project',
+    resourceId: projectId,
+    ip,
+  });
 
   return updated;
 };
@@ -198,21 +235,27 @@ const completeProject = async (projectId, requestingUserId, { ip } = {}) => {
     }
   }
 
-  const updated = await projectRepo.updateProject(projectId, { 
+  const updated = await projectRepo.updateProject(projectId, {
     status: 'COMPLETED',
     escrowStatus: 'released',
   });
 
-  log({ actorId: requestingUserId, action: AuditActions.PROJECT_COMPLETED, resourceType: 'Project', resourceId: projectId, ip });
+  log({
+    actorId: requestingUserId,
+    action: AuditActions.PROJECT_COMPLETED,
+    resourceType: 'Project',
+    resourceId: projectId,
+    ip,
+  });
 
   // Notify freelancer via background job
   if (project.winningBidId) {
     const prisma = require('../config/database');
     const winningBid = await prisma.bid.findUnique({
       where: { id: project.winningBidId },
-      include: { freelancer: true }
+      include: { freelancer: true },
     });
-    
+
     if (winningBid?.freelancer?.email) {
       await emailQueue.add('project_completed', {
         to: winningBid.freelancer.email,
@@ -221,8 +264,8 @@ const completeProject = async (projectId, requestingUserId, { ip } = {}) => {
         templateData: {
           freelancerName: winningBid.freelancer.firstName || 'Freelancer',
           projectTitle: project.title,
-          projectId: project.id
-        }
+          projectId: project.id,
+        },
       });
     }
   }

@@ -8,7 +8,7 @@
 
 require('dotenv').config();
 
-const http = require('http');            // Node's built-in HTTP module
+const http = require('http'); // Node's built-in HTTP module
 const { Server } = require('socket.io'); // Socket.io server
 
 const app = require('./src/app');

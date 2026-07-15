@@ -99,7 +99,7 @@ if (USE_REDIS) {
     QUEUE_NAME,
     async (job) => {
       const { to, subject, templateName, templateData } = job.data;
-      
+
       console.log(`[Worker] Processing job ${job.id} for ${to} (Template: ${templateName})`);
 
       const html = getTemplateHtml(templateName, templateData);

@@ -35,10 +35,7 @@ const createProjectSchema = z.object({
   deadline: z
     .string()
     .datetime({ message: 'Deadline must be a valid ISO 8601 date string' })
-    .refine(
-      (date) => new Date(date) > new Date(),
-      'Deadline must be a future date'
-    )
+    .refine((date) => new Date(date) > new Date(), 'Deadline must be a future date')
     .optional()
     .nullable(),
 });

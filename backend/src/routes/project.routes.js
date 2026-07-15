@@ -39,11 +39,7 @@ router.post(
  * @desc    List all open projects with search, filter, sort, pagination
  * @access  Public
  */
-router.get(
-  '/',
-  validate(listProjectsQuerySchema, 'query'),
-  projectController.getProjects
-);
+router.get('/', validate(listProjectsQuerySchema, 'query'), projectController.getProjects);
 
 /**
  * @route   GET /api/v1/projects/:id
@@ -70,12 +66,7 @@ router.put(
  * @desc    Delete a project (ownership check in service layer)
  * @access  Private – CLIENT only
  */
-router.delete(
-  '/:id',
-  authenticate,
-  authorize('CLIENT'),
-  projectController.deleteProject
-);
+router.delete('/:id', authenticate, authorize('CLIENT'), projectController.deleteProject);
 
 // ---------------------------------------------------------------------------
 // Project Lifecycle Actions
@@ -98,12 +89,7 @@ router.post(
  * @desc    Client confirms project completion
  * @access  Private – CLIENT only (must be the project owner)
  */
-router.post(
-  '/:id/complete',
-  authenticate,
-  authorize('CLIENT'),
-  projectController.completeProject
-);
+router.post('/:id/complete', authenticate, authorize('CLIENT'), projectController.completeProject);
 
 // ---------------------------------------------------------------------------
 // Bid Sub-Resources (nested under /projects)
@@ -127,11 +113,6 @@ router.post(
  * @desc    View all bids on a project (project owner only)
  * @access  Private – CLIENT only (ownership check in service)
  */
-router.get(
-  '/:id/bids',
-  authenticate,
-  authorize('CLIENT'),
-  bidController.getBidsForProject
-);
+router.get('/:id/bids', authenticate, authorize('CLIENT'), bidController.getBidsForProject);
 
 module.exports = router;

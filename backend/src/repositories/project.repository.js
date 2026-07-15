@@ -36,7 +36,14 @@ const PROJECT_SELECT = {
 /**
  * Create a new project.
  */
-const createProject = async ({ clientId, title, description, budget, skillsRequired, deadline }) => {
+const createProject = async ({
+  clientId,
+  title,
+  description,
+  budget,
+  skillsRequired,
+  deadline,
+}) => {
   return prisma.project.create({
     data: { clientId, title, description, budget, skillsRequired, deadline },
     select: PROJECT_SELECT,
@@ -65,7 +72,17 @@ const findProjectByIdRaw = async (id) => {
  * List projects with pagination, search, filtering, and sorting.
  * Only returns non-deleted projects (soft-delete aware).
  */
-const findProjects = async ({ page, limit, status, search, sortBy, sortOrder, minBudget, maxBudget, skill }) => {
+const findProjects = async ({
+  page,
+  limit,
+  status,
+  search,
+  sortBy,
+  sortOrder,
+  minBudget,
+  maxBudget,
+  skill,
+}) => {
   const skip = (page - 1) * limit;
 
   const where = {
@@ -81,12 +98,12 @@ const findProjects = async ({ page, limit, status, search, sortBy, sortOrder, mi
     // Skill filter: project must include the requested skill
     ...(skill && { skillsRequired: { has: skill } }),
     // Budget range filter
-    ...(minBudget !== undefined || maxBudget !== undefined) && {
+    ...((minBudget !== undefined || maxBudget !== undefined) && {
       budget: {
         ...(minBudget !== undefined && { gte: minBudget }),
         ...(maxBudget !== undefined && { lte: maxBudget }),
       },
-    },
+    }),
   };
 
   const [projects, total] = await prisma.$transaction([

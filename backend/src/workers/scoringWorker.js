@@ -12,54 +12,58 @@ if (!USE_REDIS) {
 } else {
   const redis = new Redis(redisConfig);
 
-  const worker = new Worker('scoring', async (job) => {
-    if (job.name === 'score_bid') {
-      const { bidId } = job.data;
-      
-      // Implement rate limiting using Redis counter as instructed
-      const currentCount = await redis.incr('ai_calls_count');
-      if (currentCount === 1) {
-        await redis.expire('ai_calls_count', 60); // 60 seconds
-      }
+  const worker = new Worker(
+    'scoring',
+    async (job) => {
+      if (job.name === 'score_bid') {
+        const { bidId } = job.data;
 
-      if (currentCount > 10) {
-        console.warn(`[AI Scoring] Rate limit exceeded. Delaying job ${job.id}`);
-        // Throw an error so BullMQ retries it (or we could use moveToDelayed)
-        throw new Error('Rate limit exceeded (10 calls/min). Please retry later.');
-      }
+        // Implement rate limiting using Redis counter as instructed
+        const currentCount = await redis.incr('ai_calls_count');
+        if (currentCount === 1) {
+          await redis.expire('ai_calls_count', 60); // 60 seconds
+        }
 
-      const bid = await prisma.bid.findUnique({
-        where: { id: bidId },
-        include: { project: true, freelancer: true }
-      });
+        if (currentCount > 10) {
+          console.warn(`[AI Scoring] Rate limit exceeded. Delaying job ${job.id}`);
+          // Throw an error so BullMQ retries it (or we could use moveToDelayed)
+          throw new Error('Rate limit exceeded (10 calls/min). Please retry later.');
+        }
 
-      if (!bid) {
-        console.error(`[AI Scoring] Bid ${bidId} not found.`);
-        return;
-      }
-
-      console.log(`[AI Scoring] Processing bid ${bidId}...`);
-      const { score, reason, flags } = await scoreBid(bid, bid.project, bid.freelancer);
-
-      if (score !== null) {
-        await prisma.bid.update({
+        const bid = await prisma.bid.findUnique({
           where: { id: bidId },
-          data: {
-            aiScore: score,
-            aiReason: reason,
-            aiFlags: flags,
-            aiScoredAt: new Date(),
-          }
+          include: { project: true, freelancer: true },
         });
-        console.log(`[AI Scoring] Bid ${bidId} scored successfully: ${score}`);
-      } else {
-        console.log(`[AI Scoring] Bid ${bidId} scored failed or disabled.`);
+
+        if (!bid) {
+          console.error(`[AI Scoring] Bid ${bidId} not found.`);
+          return;
+        }
+
+        console.log(`[AI Scoring] Processing bid ${bidId}...`);
+        const { score, reason, flags } = await scoreBid(bid, bid.project, bid.freelancer);
+
+        if (score !== null) {
+          await prisma.bid.update({
+            where: { id: bidId },
+            data: {
+              aiScore: score,
+              aiReason: reason,
+              aiFlags: flags,
+              aiScoredAt: new Date(),
+            },
+          });
+          console.log(`[AI Scoring] Bid ${bidId} scored successfully: ${score}`);
+        } else {
+          console.log(`[AI Scoring] Bid ${bidId} scored failed or disabled.`);
+        }
       }
+    },
+    {
+      connection: redisConfig,
+      concurrency: 2,
     }
-  }, { 
-    connection: redisConfig,
-    concurrency: 2
-  });
+  );
 
   worker.on('failed', (job, err) => {
     console.error(`[AI Scoring] Job ${job?.id} failed:`, err.message);

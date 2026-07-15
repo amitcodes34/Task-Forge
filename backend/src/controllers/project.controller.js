@@ -31,7 +31,13 @@ const getProjects = async (req, res, next) => {
     if (cached) {
       res.set('X-Cache', 'HIT');
       res.set('Cache-Control', 'public, max-age=60');
-      return ApiResponse.success(res, 200, 'Projects retrieved successfully.', { projects: cached.projects }, cached.pagination);
+      return ApiResponse.success(
+        res,
+        200,
+        'Projects retrieved successfully.',
+        { projects: cached.projects },
+        cached.pagination
+      );
     }
 
     const { projects, pagination } = await projectService.getProjects(req.query);
@@ -76,12 +82,9 @@ const getProjectById = async (req, res, next) => {
  */
 const updateProject = async (req, res, next) => {
   try {
-    const project = await projectService.updateProject(
-      req.params.id,
-      req.user.userId,
-      req.body,
-      { ip: req.ip }
-    );
+    const project = await projectService.updateProject(req.params.id, req.user.userId, req.body, {
+      ip: req.ip,
+    });
     await invalidatePattern('projects:*');
     await invalidatePattern(`project:${req.params.id}`);
     ApiResponse.success(res, 200, 'Project updated successfully.', { project });
@@ -112,12 +115,14 @@ const deliverProject = async (req, res, next) => {
     const project = await projectService.deliverProject(
       req.params.id,
       req.user.userId,
-      req.body,       // { note, attachmentUrl }
+      req.body, // { note, attachmentUrl }
       { ip: req.ip }
     );
     await invalidatePattern('projects:*');
     await invalidatePattern(`project:${req.params.id}`);
-    ApiResponse.success(res, 200, 'Project marked as delivered. Awaiting client confirmation.', { project });
+    ApiResponse.success(res, 200, 'Project marked as delivered. Awaiting client confirmation.', {
+      project,
+    });
   } catch (error) {
     next(error);
   }
@@ -128,10 +133,14 @@ const deliverProject = async (req, res, next) => {
  */
 const completeProject = async (req, res, next) => {
   try {
-    const project = await projectService.completeProject(req.params.id, req.user.userId, { ip: req.ip });
+    const project = await projectService.completeProject(req.params.id, req.user.userId, {
+      ip: req.ip,
+    });
     await invalidatePattern('projects:*');
     await invalidatePattern(`project:${req.params.id}`);
-    ApiResponse.success(res, 200, 'Project marked as completed. You can now leave a review!', { project });
+    ApiResponse.success(res, 200, 'Project marked as completed. You can now leave a review!', {
+      project,
+    });
   } catch (error) {
     next(error);
   }

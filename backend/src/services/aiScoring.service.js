@@ -11,7 +11,8 @@ const scoreBid = async (bid, project, freelancer) => {
     return { score: null, reason: null, flags: [] };
   }
 
-  const systemInstruction = "You are an expert recruiter. Reply ONLY with valid JSON, no markdown, no explanation.";
+  const systemInstruction =
+    'You are an expert recruiter. Reply ONLY with valid JSON, no markdown, no explanation.';
 
   const prompt = `
   Project: ${project.title}
@@ -41,8 +42,8 @@ const scoreBid = async (bid, project, freelancer) => {
       contents: prompt,
       config: {
         systemInstruction,
-        responseMimeType: "application/json",
-      }
+        responseMimeType: 'application/json',
+      },
     });
 
     const text = response.text;
@@ -51,7 +52,7 @@ const scoreBid = async (bid, project, freelancer) => {
     return {
       score: typeof result.score === 'number' ? result.score : null,
       reason: result.reason || null,
-      flags: Array.isArray(result.flags) ? result.flags : []
+      flags: Array.isArray(result.flags) ? result.flags : [],
     };
   } catch (error) {
     console.error('⚠️ AI Scoring failed (non-fatal):', error.message);

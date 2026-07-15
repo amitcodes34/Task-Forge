@@ -110,7 +110,7 @@ let serverAdapter;
 if (USE_REDIS) {
   serverAdapter = new ExpressAdapter();
   serverAdapter.setBasePath('/admin/queues');
-  
+
   // Add all queues here for the dashboard
   const queuesToMonitor = [];
   if (emailQueue.name) queuesToMonitor.push(new BullMQAdapter(emailQueue));

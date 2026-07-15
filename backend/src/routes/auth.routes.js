@@ -85,7 +85,12 @@ router.post('/verify-email', validate(verifyEmailSchema), authController.verifyE
  * @desc    Request a password reset email
  * @access  Public
  */
-router.post('/forgot-password', resetLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
+router.post(
+  '/forgot-password',
+  resetLimiter,
+  validate(forgotPasswordSchema),
+  authController.forgotPassword
+);
 
 /**
  * @route   POST /api/v1/auth/reset-password

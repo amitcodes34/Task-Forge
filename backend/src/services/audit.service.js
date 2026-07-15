@@ -22,7 +22,14 @@ const prisma = require('../config/database');
  * @param {object|null} [params.metadata]    - Extra context stored as JSONB
  * @param {string|null} [params.ip]          - IP address of the request
  */
-const log = async ({ actorId = null, action, resourceType, resourceId = null, metadata = null, ip = null }) => {
+const log = async ({
+  actorId = null,
+  action,
+  resourceType,
+  resourceId = null,
+  metadata = null,
+  ip = null,
+}) => {
   try {
     await prisma.auditLog.create({
       data: {
@@ -45,22 +52,22 @@ const log = async ({ actorId = null, action, resourceType, resourceId = null, me
 // ---------------------------------------------------------------------------
 
 const AuditActions = Object.freeze({
-  USER_LOGIN:           'USER_LOGIN',
-  USER_LOGOUT:          'USER_LOGOUT',
-  USER_REGISTER:        'USER_REGISTER',
-  USER_EMAIL_VERIFIED:  'USER_EMAIL_VERIFIED',
-  USER_PASSWORD_RESET:  'USER_PASSWORD_RESET',
-  USER_BANNED:          'USER_BANNED',
-  USER_UNBANNED:        'USER_UNBANNED',
-  PROJECT_CREATED:      'PROJECT_CREATED',
-  PROJECT_UPDATED:      'PROJECT_UPDATED',
-  PROJECT_DELETED:      'PROJECT_DELETED',
-  PROJECT_DELIVERED:    'PROJECT_DELIVERED',
-  PROJECT_COMPLETED:    'PROJECT_COMPLETED',
-  BID_PLACED:           'BID_PLACED',
-  BID_ACCEPTED:         'BID_ACCEPTED',
-  BID_WITHDRAWN:        'BID_WITHDRAWN',
-  REVIEW_SUBMITTED:     'REVIEW_SUBMITTED',
+  USER_LOGIN: 'USER_LOGIN',
+  USER_LOGOUT: 'USER_LOGOUT',
+  USER_REGISTER: 'USER_REGISTER',
+  USER_EMAIL_VERIFIED: 'USER_EMAIL_VERIFIED',
+  USER_PASSWORD_RESET: 'USER_PASSWORD_RESET',
+  USER_BANNED: 'USER_BANNED',
+  USER_UNBANNED: 'USER_UNBANNED',
+  PROJECT_CREATED: 'PROJECT_CREATED',
+  PROJECT_UPDATED: 'PROJECT_UPDATED',
+  PROJECT_DELETED: 'PROJECT_DELETED',
+  PROJECT_DELIVERED: 'PROJECT_DELIVERED',
+  PROJECT_COMPLETED: 'PROJECT_COMPLETED',
+  BID_PLACED: 'BID_PLACED',
+  BID_ACCEPTED: 'BID_ACCEPTED',
+  BID_WITHDRAWN: 'BID_WITHDRAWN',
+  REVIEW_SUBMITTED: 'REVIEW_SUBMITTED',
 });
 
 module.exports = { log, AuditActions };

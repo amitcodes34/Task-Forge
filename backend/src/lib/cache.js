@@ -2,7 +2,7 @@ const { redisConnection, USE_REDIS } = require('../config/redis');
 
 /**
  * Get a value from the Redis cache.
- * @param {string} key 
+ * @param {string} key
  * @returns {object|null}
  */
 const getCache = async (key) => {
@@ -18,8 +18,8 @@ const getCache = async (key) => {
 
 /**
  * Set a value in the Redis cache.
- * @param {string} key 
- * @param {object} value 
+ * @param {string} key
+ * @param {object} value
  * @param {number} ttl - Time to live in seconds (default 60)
  */
 const setCache = async (key, value, ttl = 60) => {
@@ -33,7 +33,7 @@ const setCache = async (key, value, ttl = 60) => {
 
 /**
  * Invalidate all keys matching a pattern (e.g. 'projects:*')
- * @param {string} pattern 
+ * @param {string} pattern
  */
 const invalidatePattern = async (pattern) => {
   if (!USE_REDIS || !redisConnection) return;

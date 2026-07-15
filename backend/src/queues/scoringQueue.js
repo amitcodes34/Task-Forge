@@ -12,7 +12,10 @@ if (USE_REDIS) {
   // Mock the queue for development without Redis
   scoringQueue = {
     add: async (name, data) => {
-      console.log(`[Mock Queue] Job "${name}" added to scoring queue (Redis disabled). Data:`, data);
+      console.log(
+        `[Mock Queue] Job "${name}" added to scoring queue (Redis disabled). Data:`,
+        data
+      );
       return { id: `mock-job-${Date.now()}` };
     },
   };

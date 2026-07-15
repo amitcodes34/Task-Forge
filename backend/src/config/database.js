@@ -10,10 +10,7 @@ const { PrismaClient } = require('@prisma/client');
 
 const createPrismaClient = () => {
   return new PrismaClient({
-    log:
-      process.env.NODE_ENV === 'development'
-        ? ['query', 'error', 'warn']
-        : ['error'],
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
 };
 

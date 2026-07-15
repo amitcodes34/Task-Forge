@@ -9,7 +9,10 @@ const { z } = require('zod');
 // ---------------------------------------------------------------------------
 const createBidSchema = z.object({
   amount: z
-    .number({ required_error: 'Bid amount is required', invalid_type_error: 'Amount must be a number' })
+    .number({
+      required_error: 'Bid amount is required',
+      invalid_type_error: 'Amount must be a number',
+    })
     .positive('Bid amount must be a positive number')
     .max(1000000, 'Bid amount cannot exceed $1,000,000'),
 
@@ -20,7 +23,10 @@ const createBidSchema = z.object({
     .trim(),
 
   deliveryDays: z
-    .number({ required_error: 'Delivery time is required', invalid_type_error: 'Delivery days must be a number' })
+    .number({
+      required_error: 'Delivery time is required',
+      invalid_type_error: 'Delivery days must be a number',
+    })
     .int('Delivery days must be a whole number')
     .positive('Delivery days must be positive')
     .max(365, 'Delivery time cannot exceed 365 days'),
