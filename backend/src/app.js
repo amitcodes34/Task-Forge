@@ -27,6 +27,7 @@ const { createBullBoard } = require('@bull-board/api');
 const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
 const { ExpressAdapter } = require('@bull-board/express');
 const { emailQueue } = require('./queues/emailQueue');
+const { scoringQueue } = require('./queues/scoringQueue');
 const { USE_REDIS } = require('./config/redis');
 
 // Middleware imports
@@ -105,8 +106,14 @@ let serverAdapter;
 if (USE_REDIS) {
   serverAdapter = new ExpressAdapter();
   serverAdapter.setBasePath('/admin/queues');
+  
+  // Add all queues here for the dashboard
+  const queuesToMonitor = [];
+  if (emailQueue.name) queuesToMonitor.push(new BullMQAdapter(emailQueue));
+  if (scoringQueue.name) queuesToMonitor.push(new BullMQAdapter(scoringQueue));
+
   createBullBoard({
-    queues: [new BullMQAdapter(emailQueue)],
+    queues: queuesToMonitor,
     serverAdapter: serverAdapter,
   });
 }

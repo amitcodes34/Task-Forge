@@ -12,6 +12,9 @@ const { redisConnection, USE_REDIS } = require('../config/redis');
 const { transporter } = require('../config/email');
 const { QUEUE_NAME } = require('../queues/emailQueue');
 
+// Start the scoring worker in the same process for convenience
+require('./scoringWorker');
+
 const FROM = process.env.EMAIL_FROM || '"TaskForge" <noreply@taskforge.com>';
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const IS_DEV = process.env.NODE_ENV !== 'production';

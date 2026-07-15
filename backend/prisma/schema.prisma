@@ -125,6 +125,10 @@ model Bid {
   proposal      String
   deliveryDays  Int       @map("delivery_days")
   status        BidStatus @default(PENDING)
+  aiScore       Int?      @map("ai_score")
+  aiReason      String?   @map("ai_reason")
+  aiFlags       Json?     @map("ai_flags")
+  aiScoredAt    DateTime? @map("ai_scored_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 

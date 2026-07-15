@@ -7,6 +7,7 @@ const projectRepo = require('../repositories/project.repository');
 const { log, AuditActions } = require('./audit.service');
 const { broadcastToProject } = require('../websockets/connectionManager');
 const { emailQueue } = require('../queues/emailQueue');
+const { scoringQueue } = require('../queues/scoringQueue');
 const ApiError = require('../utils/ApiError');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
@@ -87,6 +88,13 @@ const createBid = async (freelancerId, projectId, bidData, { ip } = {}) => {
     }, {
       // Optional: BullMQ job options here (e.g. jobId to debounce)
       jobId: `new_bid_${projectId}_${Date.now()}` // Unique per bid
+    });
+  }
+
+  // Trigger AI Scoring in the background
+  if (process.env.AI_SCORING_ENABLED === 'true') {
+    await scoringQueue.add('score_bid', { bidId: bid.id }, {
+      jobId: `score_bid_${bid.id}` // Prevent duplicate jobs
     });
   }
 

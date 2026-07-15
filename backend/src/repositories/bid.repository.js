@@ -10,6 +10,10 @@ const BID_SELECT = {
   proposal: true,
   deliveryDays: true,
   status: true,
+  aiScore: true,
+  aiReason: true,
+  aiFlags: true,
+  aiScoredAt: true,
   createdAt: true,
   updatedAt: true,
   freelancer: {
@@ -53,7 +57,10 @@ const findBidByIdRaw = async (id) => {
 const findBidsByProjectId = async (projectId) => {
   return prisma.bid.findMany({
     where: { projectId },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [
+      { aiScore: { sort: 'desc', nulls: 'last' } },
+      { createdAt: 'desc' }
+    ],
     select: BID_SELECT,
   });
 };
