@@ -92,6 +92,9 @@ model Project {
   skillsRequired  String[]      @map("skills_required")
   deadline        DateTime?
   winningBidId    String?       @unique @map("winning_bid_id")
+  stripePaymentIntentId String?   @map("stripe_payment_intent_id")
+  escrowStatus    String        @default("none") @map("escrow_status")
+  platformFeeAmount Int         @default(0) @map("platform_fee_amount")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
   deletedAt       DateTime?     @map("deleted_at")

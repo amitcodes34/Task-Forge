@@ -65,6 +65,12 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // ---------------------------------------------------------------------------
+// Stripe Webhooks (Must be mounted BEFORE express.json)
+// ---------------------------------------------------------------------------
+const webhookRoutes = require('./routes/webhook.routes');
+app.use('/webhooks', webhookRoutes);
+
+// ---------------------------------------------------------------------------
 // Body Parsing Middleware
 // ---------------------------------------------------------------------------
 app.use(express.json({ limit: '10kb' })); // Reject bodies > 10KB

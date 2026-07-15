@@ -185,7 +185,23 @@ const completeProject = async (projectId, requestingUserId, { ip } = {}) => {
     );
   }
 
-  const updated = await projectRepo.updateProject(projectId, { status: 'COMPLETED' });
+  // --- Stripe Payment Escrow: Capture Funds ---
+  if (project.stripePaymentIntentId) {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    try {
+      await stripe.paymentIntents.capture(project.stripePaymentIntentId);
+    } catch (err) {
+      console.error('Stripe capture failed:', err.message);
+      // Depending on business rules, we might throw or continue.
+      // We will throw to prevent project completion if capture fails.
+      throw ApiError.badRequest('Failed to capture payment: ' + err.message);
+    }
+  }
+
+  const updated = await projectRepo.updateProject(projectId, { 
+    status: 'COMPLETED',
+    escrowStatus: 'released',
+  });
 
   log({ actorId: requestingUserId, action: AuditActions.PROJECT_COMPLETED, resourceType: 'Project', resourceId: projectId, ip });
 

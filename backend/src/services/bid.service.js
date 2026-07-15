@@ -8,6 +8,7 @@ const { log, AuditActions } = require('./audit.service');
 const { broadcastToProject } = require('../websockets/connectionManager');
 const { emailQueue } = require('../queues/emailQueue');
 const ApiError = require('../utils/ApiError');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // ---------------------------------------------------------------------------
 // Place a bid (FREELANCER only)
@@ -216,6 +217,25 @@ const acceptBid = async (bidId, requestingUserId, { ip } = {}) => {
       }
     });
   }
+
+  // --- Stripe Payment Escrow Setup ---
+  const intent = await stripe.paymentIntents.create({
+    amount: Math.round(Number(bid.amount) * 100), // convert to smallest unit
+    currency: 'inr',
+    capture_method: 'manual', // authorize only
+    metadata: { project_id: project.id, bid_id: bid.id },
+  });
+
+  // Update the project with the intent ID and pending escrow status
+  await require('../config/database').project.update({
+    where: { id: project.id },
+    data: {
+      stripePaymentIntentId: intent.id,
+      escrowStatus: 'pending',
+    }
+  });
+
+  result.client_secret = intent.client_secret;
 
   return result;
 };
