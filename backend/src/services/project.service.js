@@ -77,6 +77,20 @@ const getProjectById = async (id) => {
   if (!project) {
     throw ApiError.notFound(`Project with ID '${id}' not found.`);
   }
+  
+  if (project.client && project.client.reviewsReceived) {
+    const reviews = project.client.reviewsReceived;
+    if (reviews.length > 0) {
+      const sum = reviews.reduce((acc, curr) => acc + curr.rating, 0);
+      project.client.avgRating = Number((sum / reviews.length).toFixed(1));
+    } else {
+      project.client.avgRating = 0;
+    }
+    project.client.reviewCount = reviews.length;
+    // Don't send the full array of reviews if not needed
+    delete project.client.reviewsReceived;
+  }
+
   return project;
 };
 

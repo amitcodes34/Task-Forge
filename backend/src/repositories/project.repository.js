@@ -18,7 +18,19 @@ const PROJECT_SELECT = {
   updatedAt: true,
   deletedAt: true,
   client: {
-    select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+    select: { 
+      id: true, 
+      firstName: true, 
+      lastName: true, 
+      avatarUrl: true,
+      hiringRate: true,
+      totalSpent: true,
+      avgHourlyRatePaid: true,
+      location: true,
+      reviewsReceived: {
+        select: { rating: true }
+      }
+    },
   },
   winningBid: {
     select: {

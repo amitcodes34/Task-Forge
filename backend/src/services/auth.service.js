@@ -253,6 +253,7 @@ const getUserProfile = async (userId) => {
       total: user.projects.length,
       active: user.projects.filter((p) => ['IN_PROGRESS', 'DELIVERED'].includes(p.status)).length,
       completed: user.projects.filter((p) => p.status === 'COMPLETED').length,
+      pendingProposals: user.bids ? user.bids.filter((b) => b.status === 'PENDING').length : 0,
       avgRating,
     };
   } else {
@@ -261,6 +262,10 @@ const getUserProfile = async (userId) => {
       projectsWon: user.bids.filter((b) => b.status === 'ACCEPTED').length,
       inProgress: user.bids.filter(
         (b) => b.status === 'ACCEPTED' && ['IN_PROGRESS', 'DELIVERED'].includes(b.project.status)
+      ).length,
+      pendingProposals: user.bids.filter((b) => b.status === 'PENDING').length,
+      completed: user.bids.filter(
+        (b) => b.status === 'ACCEPTED' && b.project.status === 'COMPLETED'
       ).length,
       avgRating,
     };
@@ -274,6 +279,13 @@ const getUserProfile = async (userId) => {
     role: user.role,
     avatarUrl: user.avatarUrl,
     bio: user.bio,
+    skills: user.skills,
+    jobTitle: user.jobTitle,
+    location: user.location,
+    hourlyRate: user.hourlyRate ? Number(user.hourlyRate) : null,
+    recentEarnings: user.recentEarnings ? Number(user.recentEarnings) : 0,
+    activeHours: user.activeHours ? Number(user.activeHours) : 0,
+    topRated: user.topRated,
     stats,
   };
 };

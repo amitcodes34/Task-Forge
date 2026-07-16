@@ -56,6 +56,15 @@ model User {
   bio             String?
   avatarUrl       String?   @map("avatar_url")
   skills          String[]  @default([])
+  jobTitle        String?   @map("job_title")
+  location        String?
+  hourlyRate      Decimal?  @db.Decimal(10, 2) @map("hourly_rate")
+  recentEarnings  Decimal   @default(0) @db.Decimal(10, 2) @map("recent_earnings")
+  activeHours     Decimal   @default(0) @db.Decimal(10, 2) @map("active_hours")
+  topRated        Boolean   @default(false) @map("top_rated")
+  totalSpent      Decimal   @default(0) @db.Decimal(10, 2) @map("total_spent")
+  hiringRate      Int       @default(0) @map("hiring_rate")
+  avgHourlyRatePaid Decimal @default(0) @db.Decimal(10, 2) @map("avg_hourly_rate_paid")
   isEmailVerified Boolean   @default(false) @map("is_email_verified")
   isBanned        Boolean   @default(false) @map("is_banned")
   createdAt       DateTime  @default(now()) @map("created_at")
