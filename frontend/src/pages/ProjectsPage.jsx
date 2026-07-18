@@ -1,5 +1,5 @@
 // =============================================================================
-// src/pages/ProjectsPage.jsx – Browse Projects (Advanced Search)
+// src/pages/ProjectsPage.jsx – Browse Projects (Mobile-First Responsive)
 // =============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,21 +8,18 @@ import { projectsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import SearchResultCard from '../components/SearchResultCard';
 
+const SKILLS = ['React', 'Node.js', 'Python', 'Design', 'Marketing'];
+
 const ProjectsPage = () => {
   const [projects, setProjects] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showFilters, setShowFilters] = useState(false); // mobile filter drawer
   const [filters, setFilters] = useState({
-    page: 1,
-    limit: 10,
-    search: '',
-    status: '',
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-    minBudget: '',
-    maxBudget: '',
-    skill: '',
+    page: 1, limit: 10, search: '',
+    status: '', sortBy: 'createdAt',
+    sortOrder: 'desc', minBudget: '', maxBudget: '', skill: '',
   });
   const { isClient } = useAuth();
 
@@ -30,7 +27,6 @@ const ProjectsPage = () => {
     setLoading(true);
     setError('');
     try {
-      // Remove empty string values from params before sending
       const params = Object.fromEntries(
         Object.entries(filters).filter(([, v]) => v !== '' && v !== null && v !== undefined)
       );
@@ -45,237 +41,383 @@ const ProjectsPage = () => {
     }
   }, [filters]);
 
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+  useEffect(() => { fetchProjects(); }, [fetchProjects]);
 
-  const handleSearch = (e) => {
-    setFilters((f) => ({ ...f, search: e.target.value, page: 1 }));
-  };
+  const handleFilter = (key, val) => setFilters(f => ({ ...f, [key]: val, page: 1 }));
 
-  const handleFilter = (key, val) => {
-    setFilters((f) => ({ ...f, [key]: val, page: 1 }));
-  };
+  const clearFilters = () => setFilters({
+    page: 1, limit: 10, search: '', status: '',
+    sortBy: 'createdAt', sortOrder: 'desc', minBudget: '', maxBudget: '', skill: ''
+  });
 
-  const clearFilters = () => {
-    setFilters({
-      page: 1, limit: 10, search: '', status: '', sortBy: 'createdAt', sortOrder: 'desc', minBudget: '', maxBudget: '', skill: ''
-    });
-  };
+  const activeFilterCount = [filters.skill, filters.status, filters.minBudget, filters.maxBudget].filter(Boolean).length;
 
-  return (
-    <div className="page-layout">
-      {/* Header section */}
-      <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800 }}>Browse Projects</h1>
-        </div>
-        {isClient && (
-          <Link to="/projects/new" className="btn btn--primary">
-            + Post Project
-          </Link>
-        )}
+  // ---- Filter Panel (shared between sidebar & drawer) ----
+  const FilterPanel = () => (
+    <div>
+      {/* Search */}
+      <div style={{ marginBottom: '20px' }}>
+        <label style={labelStyle}>Search Keywords</label>
+        <input
+          type="text"
+          style={inputStyle}
+          placeholder="e.g. React, API, Design..."
+          value={filters.search}
+          onChange={e => handleFilter('search', e.target.value)}
+        />
       </div>
 
-      {/* 2-Column Layout */}
-      <div className="flex gap-6" style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        
-        {/* Sidebar Filters */}
-        <aside className="card" style={{ width: '280px', flexShrink: 0, position: 'sticky', top: '100px', alignSelf: 'flex-start' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '24px', color: 'var(--color-primary)' }}>Filter Results</h3>
-          
-          <div style={{ marginBottom: '24px' }}>
-            <label className="form-label">Search Keywords</label>
+      {/* Skill */}
+      <div style={{ marginBottom: '20px' }}>
+        <label style={labelStyle}>Category (Skill)</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+          {SKILLS.map(cat => (
+            <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', color: '#454651' }}>
+              <input
+                type="radio"
+                name="category-filter"
+                checked={filters.skill === cat}
+                onChange={() => handleFilter('skill', cat)}
+                style={{ accentColor: '#142175', width: '16px', height: '16px' }}
+              />
+              {cat}
+            </label>
+          ))}
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', color: '#454651' }}>
             <input
-              type="text"
-              className="form-input"
-              placeholder="e.g. React, API..."
-              value={filters.search}
-              onChange={handleSearch}
+              type="radio"
+              name="category-filter"
+              checked={filters.skill === ''}
+              onChange={() => handleFilter('skill', '')}
+              style={{ accentColor: '#142175', width: '16px', height: '16px' }}
             />
-          </div>
+            All Categories
+          </label>
+        </div>
+      </div>
 
-          <div style={{ marginBottom: '24px' }}>
-            <label className="form-label">Category (Skill)</label>
-            <div className="flex-col gap-2">
-              {['React', 'Node.js', 'Python', 'Design', 'Marketing'].map(cat => (
-                <label key={cat} className="flex items-center gap-2" style={{ cursor: 'pointer' }}>
-                  <input 
-                    type="radio" 
-                    name="category"
-                    checked={filters.skill === cat}
-                    onChange={() => handleFilter('skill', cat)}
-                  />
-                  <span style={{ fontSize: '14px' }}>{cat}</span>
-                </label>
-              ))}
-              <label className="flex items-center gap-2" style={{ cursor: 'pointer' }}>
-                  <input 
-                    type="radio" 
-                    name="category"
-                    checked={filters.skill === ''}
-                    onChange={() => handleFilter('skill', '')}
-                  />
-                  <span style={{ fontSize: '14px' }}>All Categories</span>
-                </label>
-            </div>
-          </div>
+      {/* Budget */}
+      <div style={{ marginBottom: '20px' }}>
+        <label style={labelStyle}>Budget Range ($)</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+          <input
+            type="number"
+            style={{ ...inputStyle, margin: 0 }}
+            placeholder="Min"
+            value={filters.minBudget}
+            onChange={e => handleFilter('minBudget', e.target.value)}
+          />
+          <span style={{ color: '#94a3b8', flexShrink: 0 }}>–</span>
+          <input
+            type="number"
+            style={{ ...inputStyle, margin: 0 }}
+            placeholder="Max"
+            value={filters.maxBudget}
+            onChange={e => handleFilter('maxBudget', e.target.value)}
+          />
+        </div>
+      </div>
 
-          <div style={{ marginBottom: '24px' }}>
-            <label className="form-label">Budget Range ($)</label>
-            <div className="flex items-center gap-2">
-              <input 
-                type="number" 
-                className="form-input" 
-                placeholder="Min" 
-                value={filters.minBudget}
-                onChange={e => handleFilter('minBudget', e.target.value)}
-              />
-              <span style={{ color: 'var(--color-text-muted)' }}>-</span>
-              <input 
-                type="number" 
-                className="form-input" 
-                placeholder="Max" 
-                value={filters.maxBudget}
-                onChange={e => handleFilter('maxBudget', e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <button 
-            className="btn btn--secondary" 
-            style={{ width: '100%' }}
-            onClick={clearFilters}
+      <button
+        onClick={() => { clearFilters(); setShowFilters(false); }}
+        style={{
+          width: '100%', padding: '10px', borderRadius: '8px',
+          border: '1px solid #e2e8f0', background: '#fff',
+          color: '#64748b', fontSize: '14px', fontWeight: '600',
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}
+      >
+        Clear Filters
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+      {/* ---- MOBILE FILTER OVERLAY ---- */}
+      {showFilters && (
+        <div
+          onClick={() => setShowFilters(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            zIndex: 200, display: 'block',
+          }}
+        />
+      )}
+
+      {/* Mobile Filter Drawer */}
+      <div style={{
+        position: 'fixed', top: 0, left: 0, bottom: 0, width: '300px',
+        background: '#fff', zIndex: 201, padding: '24px',
+        transform: showFilters ? 'translateX(0)' : 'translateX(-110%)',
+        transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
+        overflowY: 'auto', boxShadow: '4px 0 24px rgba(0,0,0,0.12)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#142175' }}>Filters</h3>
+          <button
+            onClick={() => setShowFilters(false)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px', color: '#64748b', lineHeight: 1 }}
           >
-            Clear Filters
+            ×
           </button>
-        </aside>
+        </div>
+        <FilterPanel />
+      </div>
 
-        {/* Results List */}
-        <div style={{ flex: '1 1 500px', minWidth: 0 }}>
-          
-          {/* Quick Filters Pill Bar */}
-          <div className="flex items-center gap-3 hide-scrollbar" style={{ overflowX: 'auto', paddingBottom: '12px', marginBottom: '16px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', paddingRight: '8px' }}>Quick Filters:</span>
-            {['OPEN', 'IN_PROGRESS', 'COMPLETED'].map(status => {
-              const isSelected = filters.status === status;
-              return (
-                <button 
-                  key={status}
-                  onClick={() => handleFilter('status', isSelected ? '' : status)}
+      {/* ---- PAGE CONTENT ---- */}
+      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px 16px 120px' }}>
+
+        {/* Page Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
+          <div>
+            <h1 style={{ fontSize: 'clamp(22px, 5vw, 36px)', fontWeight: '800', color: '#0d1c2e', lineHeight: 1.2 }}>
+              Browse Projects
+            </h1>
+            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
+              Find your next opportunity from hundreds of open projects
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {isClient && (
+              <Link
+                to="/projects/new"
+                style={{
+                  background: '#142175', color: '#fff', textDecoration: 'none',
+                  padding: '10px 18px', borderRadius: '8px', fontSize: '14px',
+                  fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span>+</span> Post Project
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile: Search bar + Filter button row */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+          <input
+            type="text"
+            placeholder="Search projects..."
+            value={filters.search}
+            onChange={e => handleFilter('search', e.target.value)}
+            style={{
+              flex: 1, padding: '11px 14px', border: '1px solid #e2e8f0',
+              borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit',
+              outline: 'none', minWidth: 0,
+              background: '#fff',
+            }}
+            onFocus={e => e.target.style.borderColor = '#142175'}
+            onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+          />
+          {/* Filter button: visible on mobile only */}
+          <button
+            onClick={() => setShowFilters(true)}
+            style={{
+              padding: '11px 14px', border: '1px solid #e2e8f0', borderRadius: '8px',
+              background: activeFilterCount > 0 ? '#142175' : '#fff',
+              color: activeFilterCount > 0 ? '#fff' : '#454651',
+              fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+              fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px',
+              whiteSpace: 'nowrap',
+            }}
+            className="filter-btn-mobile"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>tune</span>
+            Filters
+            {activeFilterCount > 0 && (
+              <span style={{
+                background: '#fff', color: '#142175', borderRadius: '99px',
+                width: '18px', height: '18px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: '11px', fontWeight: '800',
+              }}>
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Quick Status Pills */}
+        <div style={{
+          display: 'flex', gap: '8px', marginBottom: '20px',
+          overflowX: 'auto', paddingBottom: '4px',
+        }}>
+          {[{ label: 'All', val: '' }, { label: 'Open', val: 'OPEN' }, { label: 'In Progress', val: 'IN_PROGRESS' }, { label: 'Completed', val: 'COMPLETED' }].map(({ label, val }) => {
+            const active = filters.status === val;
+            return (
+              <button
+                key={val}
+                onClick={() => handleFilter('status', val)}
+                style={{
+                  padding: '7px 16px', borderRadius: '99px', border: `1.5px solid ${active ? '#142175' : '#e2e8f0'}`,
+                  background: active ? '#142175' : '#fff',
+                  color: active ? '#fff' : '#454651',
+                  fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                  fontFamily: 'inherit', whiteSpace: 'nowrap',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 2-col layout: sidebar (desktop) + results */}
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+
+          {/* Sidebar — hidden on mobile, shown ≥ 768px */}
+          <aside className="projects-sidebar" style={{
+            width: '260px', flexShrink: 0,
+            background: '#fff', border: '1px solid #e2e8f0',
+            borderRadius: '12px', padding: '24px',
+            position: 'sticky', top: '88px',
+          }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#142175', marginBottom: '20px' }}>
+              Filter Results
+            </h3>
+            <FilterPanel />
+          </aside>
+
+          {/* Results column */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Top bar: count + sort */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <p style={{ fontSize: '14px', color: '#64748b' }}>
+                Showing <strong style={{ color: '#0d1c2e' }}>{projects.length}</strong> projects
+              </p>
+              <select
+                value={filters.sortBy}
+                onChange={e => handleFilter('sortBy', e.target.value)}
+                style={{
+                  padding: '7px 12px', border: '1px solid #e2e8f0', borderRadius: '8px',
+                  fontSize: '13px', fontFamily: 'inherit', background: '#fff',
+                  color: '#454651', outline: 'none', cursor: 'pointer',
+                }}
+              >
+                <option value="createdAt">Newest First</option>
+                <option value="budget">Highest Budget</option>
+                <option value="deadline">Closing Soon</option>
+              </select>
+            </div>
+
+            {error && (
+              <div style={{
+                background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px',
+                padding: '12px 16px', color: '#991b1b', fontSize: '14px', marginBottom: '16px',
+              }}>
+                {error}
+              </div>
+            )}
+
+            {loading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
+                <div className="spinner" />
+              </div>
+            ) : projects.length === 0 ? (
+              <div style={{
+                textAlign: 'center', padding: '60px 24px',
+                background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0',
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '12px' }}>📭</div>
+                <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#0d1c2e', marginBottom: '8px' }}>No projects found</h3>
+                <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px' }}>
+                  Try adjusting your search or filters.
+                </p>
+                <button
+                  onClick={clearFilters}
                   style={{
-                    background: isSelected ? 'var(--color-secondary)' : 'var(--color-bg-surface)',
-                    color: isSelected ? '#fff' : 'var(--color-text-primary)',
-                    border: `1px solid ${isSelected ? 'var(--color-secondary)' : 'var(--color-border)'}`,
-                    padding: '6px 16px',
-                    borderRadius: '20px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.2s ease',
+                    background: '#142175', color: '#fff', border: 'none', borderRadius: '8px',
+                    padding: '10px 20px', fontSize: '14px', fontWeight: '600',
+                    cursor: 'pointer', fontFamily: 'inherit',
                   }}
                 >
-                  {status.replace('_', ' ')}
+                  Clear All Filters
                 </button>
-              );
-            })}
-          </div>
-          
-          {/* Main Top Bar */}
-          <div className="flex justify-between items-center" style={{ marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-             <p style={{ fontSize: '14px', color: 'var(--color-text-muted)' }}>
-               Showing <strong style={{ color: 'var(--color-text-primary)' }}>{pagination?.total ?? 0}</strong> relevant projects
-             </p>
-             <div className="flex items-center gap-2">
-               <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Sort by:</span>
-               <select
-                  className="form-select"
-                  style={{ width: '160px', padding: '6px 12px', fontSize: '13px' }}
-                  value={filters.sortBy}
-                  onChange={(e) => handleFilter('sortBy', e.target.value)}
-                >
-                  <option value="createdAt">Newest First</option>
-                  <option value="budget">Highest Budget</option>
-                  <option value="deadline">Closing Soon</option>
-                </select>
-             </div>
-          </div>
-          
-          {error && <div className="alert alert--error" style={{ marginBottom: '24px' }}>{error}</div>}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {projects.map(p => <SearchResultCard key={p.id} project={p} />)}
+              </div>
+            )}
 
-          {/* Results Array */}
-          {loading ? (
-            <div className="spinner-wrapper" style={{ minHeight: '300px' }}>
-              <div className="spinner" />
-            </div>
-          ) : projects.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state__icon">📭</div>
-              <h3 className="empty-state__title">No projects found</h3>
-              <p className="empty-state__desc">Try adjusting your search or filters.</p>
-              <button className="btn btn--secondary" onClick={clearFilters} style={{ marginTop: '16px' }}>
-                Clear All Filters
-              </button>
-            </div>
-          ) : (
-            <div className="flex-col gap-4">
-               {projects.map(p => <SearchResultCard key={p.id} project={p} />)}
-            </div>
-          )}
-
-          {/* Pagination styled as numerical list */}
-          {pagination && pagination.totalPages > 1 && (
-            <div className="flex justify-center" style={{ marginTop: '40px' }}>
-              <nav className="flex items-center gap-2">
+            {/* Pagination */}
+            {pagination && pagination.totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '32px', flexWrap: 'wrap' }}>
                 <button
-                  className="btn btn--secondary"
-                  style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => handleFilter('page', filters.page - 1)}
                   disabled={!pagination.hasPrevPage}
-                  onClick={() => handleFilter('page', pagination.page - 1)}
+                  style={pageBtn(false, !pagination.hasPrevPage)}
                 >
                   ←
                 </button>
-                
-                {/* Simple page numbers */}
                 {[...Array(pagination.totalPages)].map((_, i) => {
-                  const pNum = i + 1;
-                  const isCurrent = pNum === pagination.page;
-                  // Only show 5 pages around current
-                  if (pNum === 1 || pNum === pagination.totalPages || Math.abs(pNum - pagination.page) <= 1) {
+                  const p = i + 1;
+                  if (p === 1 || p === pagination.totalPages || Math.abs(p - pagination.page) <= 1) {
                     return (
                       <button
-                        key={pNum}
-                        className={isCurrent ? "btn btn--primary" : "btn btn--secondary"}
-                        style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isCurrent ? 1 : 0.7 }}
-                        onClick={() => handleFilter('page', pNum)}
+                        key={p}
+                        onClick={() => handleFilter('page', p)}
+                        style={pageBtn(p === pagination.page, false)}
                       >
-                        {pNum}
+                        {p}
                       </button>
                     );
                   }
-                  // Ellipsis
-                  if (Math.abs(pNum - pagination.page) === 2) {
-                    return <span key={pNum} style={{ color: 'var(--color-text-muted)' }}>...</span>;
+                  if (Math.abs(p - pagination.page) === 2) {
+                    return <span key={p} style={{ alignSelf: 'center', color: '#94a3b8' }}>…</span>;
                   }
                   return null;
                 })}
-
                 <button
-                  className="btn btn--secondary"
-                  style={{ width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => handleFilter('page', filters.page + 1)}
                   disabled={!pagination.hasNextPage}
-                  onClick={() => handleFilter('page', pagination.page + 1)}
+                  style={pageBtn(false, !pagination.hasNextPage)}
                 >
                   →
                 </button>
-              </nav>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Responsive CSS injected via style tag */}
+      <style>{`
+        .projects-sidebar { display: none; }
+        .filter-btn-mobile { display: flex !important; }
+
+        @media (min-width: 768px) {
+          .projects-sidebar { display: block !important; }
+          .filter-btn-mobile { display: none !important; }
+        }
+      `}</style>
+    </>
   );
 };
+
+// Helper styles
+const labelStyle = {
+  display: 'block', fontSize: '13px', fontWeight: '600',
+  color: '#454651', marginBottom: '8px',
+};
+
+const inputStyle = {
+  width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0',
+  borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit',
+  outline: 'none', boxSizing: 'border-box',
+};
+
+const pageBtn = (active, disabled) => ({
+  width: '36px', height: '36px', borderRadius: '8px',
+  border: `1.5px solid ${active ? '#142175' : '#e2e8f0'}`,
+  background: active ? '#142175' : '#fff',
+  color: active ? '#fff' : '#454651',
+  fontSize: '14px', fontWeight: '600', cursor: disabled ? 'not-allowed' : 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  opacity: disabled ? 0.4 : 1, fontFamily: 'inherit',
+  transition: 'all 0.15s',
+});
 
 export default ProjectsPage;

@@ -55,7 +55,14 @@ const findUserByIdWithStats = async (id) => {
         select: { status: true, project: { select: { status: true } } },
       },
       reviewsReceived: {
-        select: { rating: true },
+        select: { 
+          rating: true, 
+          comment: true, 
+          createdAt: true,
+          reviewer: { select: { firstName: true, lastName: true, avatarUrl: true } } 
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
       },
     },
   });

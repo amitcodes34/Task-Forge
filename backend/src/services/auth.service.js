@@ -287,6 +287,7 @@ const getUserProfile = async (userId) => {
     activeHours: user.activeHours ? Number(user.activeHours) : 0,
     topRated: user.topRated,
     stats,
+    reviews: user.reviewsReceived || [],
   };
 };
 

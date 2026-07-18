@@ -21,6 +21,7 @@ const projectRoutes = require('./routes/project.routes');
 const bidRoutes = require('./routes/bid.routes');
 const reviewRoutes = require('./routes/review.routes');
 const adminRoutes = require('./routes/admin.routes');
+const freelancerRoutes = require('./routes/freelancer.routes');
 
 // Bull Board imports
 const { createBullBoard } = require('@bull-board/api');
@@ -151,6 +152,7 @@ app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/bids', bidRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/freelancers', freelancerRoutes);
 
 // ---------------------------------------------------------------------------
 // 404 Handler – Catch unmatched routes

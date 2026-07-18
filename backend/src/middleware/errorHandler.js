@@ -32,10 +32,11 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // ---- 2. Handle Zod validation errors ----
-  if (err instanceof ZodError) {
-    const formattedErrors = err.errors.map((e) => ({
-      field: e.path.join('.'),
-      message: e.message,
+  if (err instanceof ZodError || err.name === 'ZodError') {
+    const errorList = Array.isArray(err.errors) ? err.errors : (Array.isArray(err.issues) ? err.issues : []);
+    const formattedErrors = errorList.map((e) => ({
+      field: Array.isArray(e.path) ? e.path.join('.') : 'unknown',
+      message: e.message || 'Invalid input',
     }));
 
     return res.status(400).json({

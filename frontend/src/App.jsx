@@ -20,6 +20,7 @@ import ProjectDetailPage from './pages/ProjectDetailPage';
 import CreateProjectPage from './pages/CreateProjectPage';
 import DashboardPage from './pages/DashboardPage';
 import WorkroomPage from './pages/WorkroomPage';
+import ProfilePage from './pages/ProfilePage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 
 const App = () => {
@@ -56,6 +57,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <WorkroomPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             }
           />

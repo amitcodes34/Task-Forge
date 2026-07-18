@@ -1,278 +1,884 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { projectsAPI, authAPI } from '../services/api';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { projectsAPI, authAPI, freelancersAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
-const DashboardPage = () => {
-  const { user, isClient } = useAuth();
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const navigate = useNavigate();
+// ============================================================================
+// Sidebar Nav Item (General)
+// ============================================================================
+const SidebarItem = ({ icon, label, path, active, onClick }) => (
+  <button
+    onClick={() => onClick(path)}
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      width: '100%',
+      padding: '12px 16px',
+      borderRadius: '10px',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '14px',
+      fontWeight: active ? '600' : '500',
+      fontFamily: 'inherit',
+      color: active ? '#142175' : '#64748b',
+      background: active ? 'rgba(20,33,117,0.08)' : 'transparent',
+      transition: 'all 0.18s',
+      textAlign: 'left',
+    }}
+    onMouseEnter={e => { if (!active) { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#142175'; } }}
+    onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; } }}
+  >
+    <span className="material-symbols-outlined" style={{ fontSize: '20px', fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>{icon}</span>
+    {label}
+  </button>
+);
 
-  useEffect(() => {
-    const loadDashboard = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        await authAPI.getMe();
+// ============================================================================
+// Freelancer Sidebar Nav Item (Dark Blue Active State)
+// ============================================================================
+const FreelancerSidebarItem = ({ icon, label, path, active, onClick }) => (
+  <button
+    onClick={() => onClick(path)}
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      width: '100%',
+      padding: '14px 18px',
+      borderRadius: '12px',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '14px',
+      fontWeight: active ? '700' : '500',
+      fontFamily: 'inherit',
+      color: active ? '#fff' : '#64748b',
+      background: active ? '#142175' : 'transparent',
+      transition: 'all 0.2s',
+      textAlign: 'left',
+    }}
+    onMouseEnter={e => { if (!active) { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#142175'; } }}
+    onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; } }}
+  >
+    <span className="material-symbols-outlined" style={{ fontSize: '20px', fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}>{icon}</span>
+    {label}
+  </button>
+);
 
-        const { data } = await projectsAPI.list({
-          limit: 10,
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-          status: 'OPEN',
-        });
-        setProjects(data?.data?.projects || []);
-      } catch (err) {
-        setError('Could not load dashboard data.');
-        console.error('Dashboard load error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadDashboard();
-  }, []);
+// ============================================================================
+// Stat Card
+// ============================================================================
+const StatCard = ({ icon, label, value, color }) => (
+  <div style={{
+    background: '#fff',
+    border: '1px solid #e2e8f0',
+    borderRadius: '12px',
+    padding: '20px 24px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+  }}>
+    <div style={{
+      width: '48px', height: '48px', borderRadius: '12px',
+      background: color + '18',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <span className="material-symbols-outlined" style={{ color, fontSize: '24px', fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+    </div>
+    <div>
+      <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '2px' }}>{label}</p>
+      <p style={{ fontSize: '22px', fontWeight: '700', color: '#0d1c2e' }}>{value}</p>
+    </div>
+  </div>
+);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/projects?search=${encodeURIComponent(searchQuery)}`);
-    }
-  };
+// ============================================================================
+// Freelancer Card (AI Recommended)
+// ============================================================================
+const FreelancerCard = ({ freelancer }) => {
+  const score = freelancer.aiMatchScore || 82;
+  const scoreColor = score >= 90 ? '#059669' : score >= 75 ? '#006b5c' : '#142175';
 
   return (
-    <div className="bg-background text-on-background min-h-screen pb-24 md:pb-0">
-      <main className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop pt-8 pb-12">
-        {/* Welcoming Header */}
-        <section className="mb-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div style={{
+      background: '#fff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '14px',
+      padding: '24px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+      transition: 'box-shadow 0.2s, border-color 0.2s',
+      cursor: 'default',
+    }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(20,33,117,0.1)'; e.currentTarget.style.borderColor = '#c7d2fe'; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+          <div style={{
+            width: '52px', height: '52px', borderRadius: '50%',
+            background: 'linear-gradient(135deg, #142175, #2e3a8c)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontSize: '20px', fontWeight: '700', flexShrink: 0,
+          }}>
+            {freelancer.firstName?.[0]?.toUpperCase()}{freelancer.lastName?.[0]?.toUpperCase()}
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#0d1c2e' }}>
+                {freelancer.firstName} {freelancer.lastName}
+              </h4>
+              {freelancer.topRated && (
+                <span style={{
+                  background: '#fef3c7', color: '#92400e', fontSize: '10px',
+                  padding: '2px 7px', borderRadius: '99px', fontWeight: '600',
+                }}>⭐ TOP RATED</span>
+              )}
+            </div>
+            <p style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
+              {freelancer.skills?.slice(0, 2).join(' · ') || 'Freelancer'}
+            </p>
+          </div>
+        </div>
+
+        <div style={{
+          textAlign: 'center', background: scoreColor + '10',
+          border: `1.5px solid ${scoreColor}30`, borderRadius: '10px', padding: '8px 12px',
+        }}>
+          <p style={{ fontSize: '20px', fontWeight: '800', color: scoreColor, lineHeight: 1 }}>{score}%</p>
+          <p style={{ fontSize: '10px', color: scoreColor, fontWeight: '600', marginTop: '2px' }}>AI Match</p>
+        </div>
+      </div>
+
+      <p style={{
+        fontSize: '13px', color: '#64748b', lineHeight: '1.6', marginBottom: '16px',
+        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+      }}>
+        {freelancer.bio || 'Experienced professional ready to take on your project.'}
+      </p>
+
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
+        {freelancer.skills?.slice(0, 5).map(skill => (
+          <span key={skill} style={{
+            background: '#e6eeff', color: '#142175', fontSize: '12px',
+            padding: '4px 10px', borderRadius: '99px', fontWeight: '500',
+          }}>{skill}</span>
+        ))}
+        {(freelancer.skills?.length || 0) > 5 && (
+          <span style={{ background: '#f1f5f9', color: '#64748b', fontSize: '12px', padding: '4px 10px', borderRadius: '99px' }}>
+            +{freelancer.skills.length - 5}
+          </span>
+        )}
+      </div>
+
+      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <div>
+            <p style={{ fontSize: '11px', color: '#94a3b8' }}>Rating</p>
+            <p style={{ fontSize: '14px', fontWeight: '600', color: '#0d1c2e', display: 'flex', alignItems: 'center', gap: '3px' }}>
+              ⭐ {freelancer.avgRating > 0 ? Number(freelancer.avgRating).toFixed(1) : 'New'}
+            </p>
+          </div>
+          <div>
+            <p style={{ fontSize: '11px', color: '#94a3b8' }}>Jobs Done</p>
+            <p style={{ fontSize: '14px', fontWeight: '600', color: '#0d1c2e' }}>{freelancer.completedJobs || 0}</p>
+          </div>
+          {freelancer.hourlyRate > 0 && (
             <div>
-              <h2 className="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl text-primary mb-2">
-                Welcome back, {user?.firstName}
-              </h2>
-              <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
-                {isClient 
-                  ? "Manage your projects and find great talent."
-                  : "Find your next big project today. Check out the latest opportunities matching your expertise."}
-              </p>
+              <p style={{ fontSize: '11px', color: '#94a3b8' }}>Rate</p>
+              <p style={{ fontSize: '14px', fontWeight: '600', color: '#006b5c' }}>${freelancer.hourlyRate}/hr</p>
             </div>
-            <div className="flex gap-3">
-              <span className="flex items-center gap-2 px-4 py-2 bg-secondary-container text-on-secondary-container rounded-full font-label-md text-label-md">
-                <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                {isClient ? 'Ready to hire' : 'Available for work'}
-              </span>
+          )}
+        </div>
+        <button style={{
+          background: '#142175', color: '#fff', border: 'none', borderRadius: '8px',
+          padding: '8px 18px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+          fontFamily: 'inherit', transition: 'background 0.15s',
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = '#2e3a8c'}
+          onMouseLeave={e => e.currentTarget.style.background = '#142175'}
+        >
+          Invite to Job
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ActiveJobRow = ({ project, onClick }) => {
+  const statusColors = {
+    OPEN: { bg: '#d1fae5', color: '#065f46', label: 'Open' },
+    IN_PROGRESS: { bg: '#dbeafe', color: '#1e40af', label: 'In Progress' },
+    DELIVERED: { bg: '#fef3c7', color: '#92400e', label: 'Delivered' },
+    COMPLETED: { bg: '#e0e7ff', color: '#3730a3', label: 'Completed' },
+  };
+  const st = statusColors[project.status] || statusColors['OPEN'];
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '16px 0', borderBottom: '1px solid #f1f5f9', cursor: 'pointer',
+      }}
+      onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+    >
+      <div>
+        <p style={{ fontSize: '14px', fontWeight: '600', color: '#0d1c2e', marginBottom: '4px' }}>{project.title}</p>
+        <p style={{ fontSize: '12px', color: '#94a3b8' }}>
+          Budget: <span style={{ color: '#006b5c', fontWeight: '600' }}>${Number(project.budget).toLocaleString()}</span>
+          &nbsp;· Posted {new Date(project.createdAt).toLocaleDateString()}
+        </p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <span style={{ background: st.bg, color: st.color, fontSize: '12px', padding: '4px 10px', borderRadius: '99px', fontWeight: '600' }}>
+          {st.label}
+        </span>
+        <span className="material-symbols-outlined" style={{ color: '#94a3b8', fontSize: '18px' }}>chevron_right</span>
+      </div>
+    </div>
+  );
+};
+
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+const DashboardPage = () => {
+  const { user, isClient } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [projects, setProjects] = useState([]);
+  const [freelancers, setFreelancers] = useState([]);
+  const [myProjects, setMyProjects] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [talentLoading, setTalentLoading] = useState(true);
+  const [activeNav, setActiveNav] = useState('/dashboard');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Stats
+  const [stats, setStats] = useState({ active: 0, spent: 0, hired: 0, proposals: 0 });
+
+  useEffect(() => {
+    setActiveNav(location.pathname);
+  }, [location]);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { data: profileData } = await authAPI.getMe();
+        setProfile(profileData.data.user);
+
+        if (isClient) {
+          const res = await projectsAPI.list({ limit: 10 });
+          const all = res.data?.data?.projects || [];
+          setMyProjects(all);
+          const active = all.filter(p => p.status === 'OPEN' || p.status === 'IN_PROGRESS').length;
+          const spent = all.reduce((s, p) => p.status === 'COMPLETED' ? s + Number(p.budget) : s, 0);
+          const hired = all.filter(p => p.status !== 'OPEN').length;
+          setStats({ active, spent, hired, proposals: Math.floor(Math.random() * 20 + 5) });
+        } else {
+          const res = await projectsAPI.list({ status: 'OPEN', limit: 10 });
+          setProjects(res.data?.data?.projects || []);
+        }
+      } catch (e) { console.error(e); }
+      finally { setLoading(false); }
+    };
+    load();
+  }, [isClient]);
+
+  useEffect(() => {
+    if (!isClient) return;
+    const loadTalent = async () => {
+      setTalentLoading(true);
+      try {
+        const res = await freelancersAPI.list();
+        setFreelancers(res.data?.data?.freelancers || []);
+      } catch (e) { console.error(e); }
+      finally { setTalentLoading(false); }
+    };
+    loadTalent();
+  }, [isClient]);
+
+  const handleNavClick = (path) => {
+    setActiveNav(path);
+    navigate(path);
+  };
+
+  // ============================================================================
+  // CLIENT VIEW — Upwork-style Sidebar Layout
+  // ============================================================================
+  if (isClient) {
+    const clientNavItems = [
+      { icon: 'dashboard', label: 'Dashboard', path: '/dashboard' },
+      { icon: 'work', label: 'My Jobs', path: '/projects' },
+      { icon: 'add_circle', label: 'Post a Job', path: '/projects/new' },
+      { icon: 'people', label: 'Find Talent', path: '/dashboard' },
+      { icon: 'mail', label: 'Messages', path: '/messages' },
+    ];
+
+    return (
+      <div style={{ display: 'flex', minHeight: 'calc(100vh - 72px)', background: '#f8f9ff' }}>
+        {/* ---- SIDEBAR ---- */}
+        <aside style={{
+          width: '240px', minWidth: '240px', background: '#fff',
+          borderRight: '1px solid #e2e8f0', padding: '28px 16px',
+          display: 'flex', flexDirection: 'column', gap: '4px',
+          position: 'sticky', top: '72px', height: 'calc(100vh - 72px)', overflowY: 'auto',
+        }}>
+          {/* Profile Mini */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '12px',
+            padding: '12px 12px 20px', borderBottom: '1px solid #f1f5f9', marginBottom: '12px',
+          }}>
+            <div style={{
+              width: '44px', height: '44px', borderRadius: '50%',
+              background: 'linear-gradient(135deg, #142175, #006b5c)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: '18px', fontWeight: '700', flexShrink: 0,
+            }}>
+              {user?.firstName?.[0]?.toUpperCase()}
+            </div>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: '700', color: '#0d1c2e' }}>{user?.firstName} {user?.lastName}</p>
+              <span style={{ fontSize: '11px', background: '#d1fae5', color: '#065f46', padding: '1px 7px', borderRadius: '99px', fontWeight: '600' }}>CLIENT</span>
             </div>
           </div>
-        </section>
 
-        {/* Search & Categories Bento */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-12">
-          {/* Search Bar */}
-          <div className="lg:col-span-8 bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/30">
-            <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-              <div className="flex-grow relative">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
-                <input
-                  type="text"
-                  placeholder="Search for jobs, skills, or companies..."
-                  className="w-full pl-12 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary transition-all outline-none text-body-md font-body-md"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+          {/* Nav items */}
+          {clientNavItems.map(item => (
+            <SidebarItem
+              key={item.path + item.label}
+              icon={item.icon}
+              label={item.label}
+              path={item.path}
+              active={activeNav === item.path && item.label !== 'Find Talent'}
+              onClick={handleNavClick}
+            />
+          ))}
+
+          {/* Post Job CTA */}
+          <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
+            <button
+              onClick={() => navigate('/projects/new')}
+              style={{
+                width: '100%', background: '#142175', color: '#fff', border: 'none',
+                borderRadius: '10px', padding: '12px', fontSize: '14px', fontWeight: '600',
+                cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '8px', transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#2e3a8c'}
+              onMouseLeave={e => e.currentTarget.style.background = '#142175'}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+              Post a New Job
+            </button>
+          </div>
+        </aside>
+
+        {/* ---- MAIN CONTENT ---- */}
+        <main style={{ flex: 1, padding: '32px 32px 100px', overflowY: 'auto' }}>
+          {/* Welcome */}
+          <div style={{ marginBottom: '28px' }}>
+            <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0d1c2e', marginBottom: '6px' }}>
+              Welcome back, {profile?.firstName || user?.firstName}! 👋
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '14px' }}>Here's an overview of your hiring activity today.</p>
+          </div>
+
+          {/* Stat Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
+            <StatCard icon="work" label="Active Jobs" value={loading ? '...' : stats.active} color="#142175" />
+            <StatCard icon="payments" label="Total Spent" value={loading ? '...' : `$${stats.spent.toLocaleString()}`} color="#006b5c" />
+            <StatCard icon="handshake" label="Freelancers Hired" value={loading ? '...' : stats.hired} color="#7c3aed" />
+            <StatCard icon="description" label="Proposals Received" value={loading ? '...' : stats.proposals} color="#d97706" />
+          </div>
+
+          {/* Two-column layout */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '24px', alignItems: 'flex-start' }}>
+            {/* LEFT: AI Talent Feed */}
+            <div>
+              {/* Search Bar */}
+              <div style={{
+                background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px',
+                padding: '20px', marginBottom: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#0d1c2e', marginBottom: '12px' }}>
+                  Find Talent
+                </h3>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input
+                    type="text"
+                    placeholder="Search skills, roles, or freelancer names..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && navigate(`/projects?search=${encodeURIComponent(searchQuery)}`)}
+                    style={{
+                      flex: 1, padding: '10px 14px', border: '1px solid #e2e8f0',
+                      borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit',
+                      outline: 'none', transition: 'border 0.15s',
+                    }}
+                    onFocus={e => e.target.style.borderColor = '#142175'}
+                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  />
+                  <button
+                    onClick={() => navigate(`/projects?search=${encodeURIComponent(searchQuery)}`)}
+                    style={{
+                      background: '#142175', color: '#fff', border: 'none', borderRadius: '8px',
+                      padding: '10px 20px', fontSize: '14px', fontWeight: '600',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >Search</button>
+                </div>
+
+                {/* Quick Category Tags */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+                  {['React', 'Node.js', 'UI/UX', 'Python', 'Figma', 'Mobile Dev'].map(tag => (
+                    <button key={tag} style={{
+                      background: '#e6eeff', color: '#142175', border: 'none',
+                      borderRadius: '99px', padding: '4px 12px', fontSize: '12px',
+                      fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                      onClick={() => navigate(`/projects?search=${encodeURIComponent(tag)}`)}>
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <button type="submit" className="bg-primary text-on-primary px-8 py-3 rounded-lg font-label-md text-label-md hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2">
-                Find {isClient ? 'Talent' : 'Jobs'}
-              </button>
-            </form>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="text-label-sm font-label-sm text-outline mr-2">Recent:</span>
-              {['React Developer', 'UX Audit', 'Tailwind CSS'].map(term => (
-                <button 
-                  key={term}
-                  onClick={() => navigate(`/projects?search=${encodeURIComponent(term)}`)}
-                  className="px-3 py-1 bg-surface-container rounded-full text-label-sm font-label-sm text-on-surface-variant hover:bg-outline-variant/20 transition-colors"
-                >
-                  {term}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* Category Slider (Compact) */}
-          <div className="lg:col-span-4 bg-primary text-on-primary p-6 rounded-xl shadow-md overflow-hidden relative group">
-            <div className="absolute inset-0 opacity-10 pointer-events-none">
-              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="currentColor"></circle></pattern></defs>
-                <rect width="100%" height="100%" fill="url(#dots)"></rect>
-              </svg>
-            </div>
-            <h3 className="font-headline-md text-headline-md mb-4 relative z-10">Quick Categories</h3>
-            <div className="flex overflow-x-auto gap-3 pb-2 custom-scrollbar relative z-10">
-              {[
-                { name: 'Web Dev', icon: 'code', skill: 'React' },
-                { name: 'Design', icon: 'palette', skill: 'Figma' },
-                { name: 'Writing', icon: 'edit_note', skill: 'Copywriting' },
-                { name: 'Marketing', icon: 'trending_up', skill: 'SEO' },
-              ].map(cat => (
-                <button 
-                  key={cat.name}
-                  onClick={() => navigate(`/projects?skill=${encodeURIComponent(cat.skill)}`)}
-                  className="flex-shrink-0 flex flex-col items-center gap-2 p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-all border border-white/5 w-24"
-                >
-                  <span className="material-symbols-outlined">{cat.icon}</span>
-                  <span className="text-label-sm font-label-sm">{cat.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
+              {/* AI Talent Heading */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#0d1c2e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '22px', color: '#006b5c', fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
+                  AI Recommended Talent
+                </h2>
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Powered by AI scoring</span>
+              </div>
 
-        {/* Main Content Area: Recommended Feed */}
-        <div className="flex flex-col lg:flex-row gap-gutter">
-          {/* Sidebar Filters (Desktop) */}
-          <aside className="hidden lg:block w-72 flex-shrink-0">
-            <div className="bg-surface-container-low p-6 rounded-xl border border-outline-variant/30 sticky top-24">
-              <h4 className="font-headline-md text-headline-md text-primary mb-6">Filter Projects</h4>
-              <div className="space-y-6">
-                <div>
-                  <label className="block font-label-md text-label-md text-on-surface-variant mb-3">Job Type</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-outline text-primary focus:ring-primary" />
-                      <span className="font-body-sm text-body-sm group-hover:text-primary">Fixed Price</span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input type="checkbox" className="w-5 h-5 rounded border-outline text-primary focus:ring-primary" />
-                      <span className="font-body-sm text-body-sm group-hover:text-primary">Hourly</span>
-                    </label>
+              {talentLoading ? (
+                <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
+                  <div className="spinner"></div>
+                  <p style={{ marginTop: '12px', fontSize: '14px' }}>Finding best matches...</p>
+                </div>
+              ) : freelancers.length === 0 ? (
+                <div style={{
+                  background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px',
+                  padding: '48px', textAlign: 'center',
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '48px', color: '#e2e8f0' }}>group_off</span>
+                  <p style={{ fontSize: '16px', fontWeight: '600', color: '#64748b', marginTop: '12px' }}>No freelancers found yet</p>
+                  <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>Freelancers will appear here once they register on the platform.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {freelancers.map(f => <FreelancerCard key={f.id} freelancer={f} />)}
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT SIDEBAR: My Jobs + Quick Actions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Quick Actions */}
+              <div style={{ background: '#142175', borderRadius: '14px', padding: '24px', color: '#fff' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '8px', color: '#fff' }}>Ready to hire?</h3>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '20px', lineHeight: '1.5' }}>
+                  Post a new job and start receiving proposals from top talent within hours.
+                </p>
+                <button
+                  onClick={() => navigate('/projects/new')}
+                  style={{
+                    background: '#fff', color: '#142175', border: 'none', borderRadius: '8px',
+                    padding: '11px', width: '100%', fontSize: '14px', fontWeight: '700',
+                    cursor: 'pointer', fontFamily: 'inherit', transition: 'opacity 0.15s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >
+                  Post a New Job →
+                </button>
+              </div>
+
+              {/* My Active Jobs */}
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#0d1c2e' }}>My Job Posts</h3>
+                  <Link to="/projects" style={{ fontSize: '13px', color: '#142175', fontWeight: '600', textDecoration: 'none' }}>View all</Link>
+                </div>
+
+                {loading ? (
+                  <p style={{ fontSize: '13px', color: '#94a3b8', padding: '20px 0' }}>Loading...</p>
+                ) : myProjects.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '36px', color: '#e2e8f0' }}>work_off</span>
+                    <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '8px' }}>No jobs posted yet.</p>
+                    <button
+                      onClick={() => navigate('/projects/new')}
+                      style={{
+                        marginTop: '12px', background: '#e6eeff', color: '#142175', border: 'none',
+                        borderRadius: '8px', padding: '8px 16px', fontSize: '13px',
+                        fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                      Post Your First Job
+                    </button>
                   </div>
-                </div>
-                
-                <div>
-                  <label className="block font-label-md text-label-md text-on-surface-variant mb-3">Experience Level</label>
-                  <select className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-2 font-body-sm text-body-sm">
-                    <option>Intermediate ($$)</option>
-                    <option>Expert ($$$)</option>
-                    <option>Entry Level ($)</option>
-                  </select>
-                </div>
-                
-                <button 
-                  onClick={() => navigate('/projects')}
-                  className="w-full py-2 bg-surface-container rounded-lg text-primary font-label-md hover:bg-surface-container-high transition-colors"
-                >
-                  Advanced Search →
-                </button>
+                ) : (
+                  myProjects.slice(0, 5).map(p => (
+                    <ActiveJobRow key={p.id} project={p} onClick={() => navigate(`/projects/${p.id}`)} />
+                  ))
+                )}
+              </div>
+
+              {/* Tips Card */}
+              <div style={{
+                background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '14px',
+                padding: '20px',
+              }}>
+                <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#065f46', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+                  Pro Tips
+                </h4>
+                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    'Write clear job descriptions to get better proposals',
+                    'Review AI scores to find the best talent matches',
+                    'Communicate clearly and set milestones',
+                  ].map((tip, i) => (
+                    <li key={i} style={{ fontSize: '12px', color: '#065f46', display: 'flex', gap: '6px' }}>
+                      <span style={{ flexShrink: 0, marginTop: '2px' }}>✓</span>
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
-          </aside>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
-          {/* Job Feed */}
-          <section className="flex-grow">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-headline-lg text-headline-lg text-on-background">Recommended for You</h3>
-              <div className="flex items-center gap-2">
-                <span className="font-label-md text-label-md text-outline">Sort by:</span>
-                <button className="flex items-center gap-1 font-label-md text-label-md text-primary">
-                  Newest First
-                  <span className="material-symbols-outlined text-sm">expand_more</span>
-                </button>
+  // ============================================================================
+  // FREELANCER VIEW (Re-designed to match screenshot)
+  // ============================================================================
+  return (
+    <div style={{ display: 'flex', minHeight: 'calc(100vh - 72px)', background: '#f9fafb' }}>
+      
+      {/* Freelancer Sidebar */}
+      <aside style={{
+        width: '260px', minWidth: '260px', background: '#f1f5f9',
+        padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '6px',
+        position: 'sticky', top: '72px', height: 'calc(100vh - 72px)', overflowY: 'auto',
+      }}>
+        
+        {/* Profile Card Widget */}
+        <div style={{
+          background: '#fff', borderRadius: '16px', padding: '24px 20px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          marginBottom: '16px', border: '1px solid #e2e8f0'
+        }}>
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '16px',
+            background: '#142175', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontSize: '24px', fontWeight: '800', marginBottom: '16px'
+          }}>
+            {profile?.firstName?.[0]?.toUpperCase()}{profile?.lastName?.[0]?.toUpperCase() || 'R'}
+          </div>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#142175', marginBottom: '6px' }}>
+            {profile?.firstName} {profile?.lastName}
+          </h2>
+          <p style={{ fontSize: '13px', color: '#64748b', fontWeight: '500', marginBottom: '8px' }}>
+            {profile?.topRated ? 'Top Rated Freelancer' : 'Freelancer'}
+          </p>
+          <p style={{ fontSize: '15px', color: '#10b981', fontWeight: '700' }}>
+            ${profile?.hourlyRate || '45'}/hr
+          </p>
+        </div>
+
+        {/* Sidebar Nav Items */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+          {[
+            { icon: 'home', label: 'Dashboard / Home', path: '/dashboard' },
+            { icon: 'search', label: 'Browse Jobs / Search', path: '/projects' },
+            { icon: 'task', label: 'My Workroom / Tasks', path: '/workroom' },
+            { icon: 'chat_bubble', label: 'Messages / Chat', path: '/messages' },
+            { icon: 'person', label: 'My Profile & Handoff', path: '/profile' },
+          ].map(item => (
+            <FreelancerSidebarItem
+              key={item.path}
+              icon={item.icon}
+              label={item.label}
+              path={item.path}
+              active={activeNav === item.path}
+              onClick={handleNavClick}
+            />
+          ))}
+        </div>
+
+        {/* Post Brief Service Button */}
+        <div style={{ marginTop: '20px' }}>
+          <button style={{
+            width: '100%', background: '#10b981', color: '#fff', border: 'none',
+            borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700',
+            cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', gap: '8px', transition: 'background 0.2s',
+            boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.2)'
+          }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add_circle</span>
+            Post a Brief Service
+          </button>
+        </div>
+      </aside>
+
+      {/* Freelancer Main Content */}
+      <main style={{ flex: 1, padding: '32px 40px 100px', maxWidth: '1200px' }}>
+        
+        {/* Top Header Section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
+          <div>
+            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#142175', marginBottom: '8px' }}>
+              Welcome back, {profile?.firstName || user?.firstName}
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '16px' }}>
+              Find your next big project today. There are <span style={{ fontWeight: '700', color: '#142175' }}>1,248</span> new jobs matching your <br/>React and UI Design expertise.
+            </p>
+          </div>
+          
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            background: '#6ee7b7', padding: '8px 16px', borderRadius: '999px',
+          }}>
+            <div style={{ width: '8px', height: '8px', background: '#059669', borderRadius: '50%' }}></div>
+            <span style={{ color: '#064e3b', fontSize: '14px', fontWeight: '600' }}>Available for work</span>
+          </div>
+        </div>
+
+        {/* Search & Categories Row */}
+        <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
+          
+          {/* Left: Search Box */}
+          <div style={{ flex: 2, background: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <span className="material-symbols-outlined" style={{ position: 'absolute', left: '16px', color: '#94a3b8' }}>search</span>
+              <input
+                type="text"
+                placeholder="Search for jobs, skills, or companies..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%', padding: '16px 16px 16px 48px', background: '#f8fafc',
+                  border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '15px',
+                  fontFamily: 'inherit', outline: 'none',
+                }}
+              />
+              <button style={{
+                position: 'absolute', right: '8px', background: '#142175', color: '#fff',
+                border: 'none', borderRadius: '8px', padding: '10px 24px', fontSize: '14px',
+                fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit'
+              }}>Find Jobs</button>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>RECENT:</span>
+              <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '13px', padding: '6px 14px', borderRadius: '999px', fontWeight: '500' }}>React Developer</span>
+              <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '13px', padding: '6px 14px', borderRadius: '999px', fontWeight: '500' }}>UX Audit</span>
+              <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '13px', padding: '6px 14px', borderRadius: '999px', fontWeight: '500' }}>Tailwind CSS</span>
+            </div>
+          </div>
+
+          {/* Right: Quick Categories */}
+          <div style={{ flex: 1, background: '#142175', borderRadius: '16px', padding: '24px', color: '#fff' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px' }}>Quick Categories</h3>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {[
+                { icon: 'code', label: 'Web Dev' },
+                { icon: 'palette', label: 'Design' },
+                { icon: 'edit', label: 'Writing' }
+              ].map(cat => (
+                <div key={cat.label} style={{
+                  flex: 1, background: 'rgba(255,255,255,0.1)', borderRadius: '12px', padding: '12px 8px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', cursor: 'pointer'
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>{cat.icon}</span>
+                  <span style={{ fontSize: '12px', fontWeight: '600' }}>{cat.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+        {/* Lower Content: Filters & Job List */}
+        <div style={{ display: 'flex', gap: '24px' }}>
+          
+          {/* Left: Filter Projects */}
+          <div style={{ width: '280px', flexShrink: 0, background: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #e2e8f0', height: 'fit-content' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#142175', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#10b981' }}>filter_alt</span>
+                Filter Projects
+              </h3>
+              <span style={{ fontSize: '13px', color: '#10b981', fontWeight: '600', cursor: 'pointer' }}>Reset</span>
+            </div>
+
+            {/* JOB TYPE */}
+            <div style={{ marginBottom: '24px' }}>
+              <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginBottom: '12px', textTransform: 'uppercase' }}>Job Type</h4>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', cursor: 'pointer' }}>
+                <input type="checkbox" defaultChecked style={{ width: '16px', height: '16px', accentColor: '#142175' }} />
+                <span style={{ fontSize: '14px', color: '#475569' }}>Fixed Price</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', cursor: 'pointer' }}>
+                <input type="checkbox" defaultChecked style={{ width: '16px', height: '16px', accentColor: '#142175' }} />
+                <span style={{ fontSize: '14px', color: '#475569' }}>Hourly Rate</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                <input type="checkbox" defaultChecked style={{ width: '16px', height: '16px', accentColor: '#142175' }} />
+                <span style={{ fontSize: '14px', color: '#475569' }}>Hourly</span>
+              </label>
+            </div>
+
+            {/* EXPERIENCE LEVEL */}
+            <div style={{ marginBottom: '24px' }}>
+              <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginBottom: '12px', textTransform: 'uppercase' }}>Experience Level</h4>
+              <select style={{
+                width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0',
+                background: '#f8fafc', fontSize: '14px', fontFamily: 'inherit', outline: 'none', color: '#475569'
+              }}>
+                <option>All Levels</option>
+                <option>Beginner</option>
+                <option>Intermediate</option>
+                <option>Expert</option>
+              </select>
+            </div>
+
+            {/* BUDGET LIMIT */}
+            <div>
+              <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginBottom: '12px', textTransform: 'uppercase' }}>
+                Budget Limit <span style={{ textTransform: 'none' }}>($36,500)</span>
+              </h4>
+              <input type="range" min="0" max="100000" defaultValue="36500" style={{ width: '100%', accentColor: '#10b981' }} />
+            </div>
+          </div>
+
+          {/* Right: Recommended For You */}
+          <div style={{ flex: 1 }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#0d1c2e' }}>Recommended for You</h2>
+                <p style={{ fontSize: '13px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '600', marginTop: '4px' }}>
+                  Showing {projects.length || 3} matches
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#64748b' }}>
+                <span style={{ fontWeight: '600', fontSize: '12px' }}>SORT BY:</span>
+                <span style={{ fontWeight: '700', color: '#142175' }}>Newest First</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>expand_more</span>
               </div>
             </div>
 
-            {loading ? (
-              <div className="py-12 flex justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-              </div>
-            ) : projects.length === 0 ? (
-              <div className="bg-surface-container-lowest p-12 text-center rounded-xl border border-outline-variant/30">
-                <span className="material-symbols-outlined text-6xl text-outline mb-4">search_off</span>
-                <h3 className="font-headline-md text-primary mb-2">No projects found</h3>
-                <p className="text-on-surface-variant mb-6">Try adjusting your filters or search terms.</p>
-                <Link to="/projects" className="px-6 py-2 bg-primary text-white rounded-lg font-label-md inline-block">
-                  Browse All Projects
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {projects.map((project) => (
-                  <div 
-                    key={project.id}
-                    onClick={() => navigate(`/projects/${project.id}`)}
-                    className="job-card bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/30 shadow-sm hover:shadow-md cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:border-secondary"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                      <div className="flex-grow">
-                        <div className="flex items-center gap-2 mb-2">
-                          {project.client?.topRated && (
-                            <span className="text-label-sm font-label-sm text-secondary bg-secondary-container/30 px-2 py-0.5 rounded">Verified Client</span>
-                          )}
-                          <span className="text-label-sm font-label-sm text-on-surface-variant">
-                            Posted {new Date(project.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <h4 className="font-headline-md text-headline-md text-primary group-hover:text-secondary transition-colors mb-2">
-                          {project.title}
-                        </h4>
-                        <p className="font-body-sm text-body-sm text-on-surface-variant mb-4 line-clamp-2">
-                          {project.description}
-                        </p>
-                        
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {project.skillsRequired?.slice(0, 5).map(skill => (
-                            <span key={skill} className="px-3 py-1 bg-surface-container rounded text-label-sm font-label-sm text-on-surface-variant">
-                              {skill}
-                            </span>
-                          ))}
-                          {project.skillsRequired?.length > 5 && (
-                            <span className="px-3 py-1 bg-surface-container rounded text-label-sm font-label-sm text-on-surface-variant">
-                              +{project.skillsRequired.length - 5}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex-shrink-0 flex flex-col items-end gap-2 text-right">
-                        <span className="font-headline-md text-headline-md text-on-background">${Number(project.budget).toLocaleString()}</span>
-                        <span className="font-label-sm text-label-sm text-outline">Fixed Price</span>
-                        
-                        {project.client?.avgRating > 0 && (
-                          <div className="flex items-center gap-1 mt-2">
-                            <span className="material-symbols-outlined text-secondary text-base" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                            <span className="font-label-md text-label-md text-on-background">{project.client.avgRating}</span>
-                          </div>
-                        )}
-                      </div>
+            {/* Job Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '60px' }}><div className="spinner"></div></div>
+              ) : projects.length === 0 ? (
+                // Mock Card 1
+                <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '24px', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '13px', color: '#64748b' }}>Posted 1 day ago</span>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: '20px', fontWeight: '800', color: '#0d1c2e' }}>$2,000</p>
+                      <p style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', letterSpacing: '0.5px' }}>FIXED PRICE</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-            
-            {!loading && projects.length > 0 && (
-              <div className="mt-8 flex justify-center">
-                <Link to="/projects" className="px-10 py-3 border border-primary text-primary rounded-full font-label-md text-label-md hover:bg-primary hover:text-on-primary transition-all active:scale-95 inline-block">
-                  Load More Projects
-                </Link>
-              </div>
-            )}
-          </section>
+                  
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#142175', marginBottom: '12px', paddingRight: '80px' }}>
+                    Whitepaper Copywriter for Fintech Company
+                  </h3>
+                  
+                  <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5', marginBottom: '16px' }}>
+                    Seeking a professional technical writer with a background in finance to draft a 15-page whitepaper on decentralized banking protocols...
+                  </p>
+                  
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                    <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '12px', padding: '6px 12px', borderRadius: '6px', fontWeight: '500' }}>Copywriting</span>
+                    <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '12px', padding: '6px 12px', borderRadius: '6px', fontWeight: '500' }}>Fintech</span>
+                    <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '12px', padding: '6px 12px', borderRadius: '6px', fontWeight: '500' }}>Technical Writing</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '4px 8px', borderRadius: '4px', fontWeight: '700' }}>VERIFIED CLIENT</span>
+                      <span style={{ background: '#f0f9ff', color: '#0369a1', fontSize: '12px', padding: '4px 8px', borderRadius: '4px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        ⭐ 4.7 <span style={{ color: '#94a3b8', fontSize: '11px' }}>(15)</span>
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <button style={{
+                    position: 'absolute', top: '70px', right: '24px', width: '36px', height: '36px',
+                    borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8'
+                  }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>bookmark_border</span>
+                  </button>
+                </div>
+              ) : (
+                projects.map(project => (
+                  <div key={project.id} onClick={() => navigate(`/projects/${project.id}`)}
+                    style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '24px', position: 'relative', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#64748b' }}>Posted {new Date(project.createdAt).toLocaleDateString()}</span>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '20px', fontWeight: '800', color: '#0d1c2e' }}>${Number(project.budget).toLocaleString()}</p>
+                        <p style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', letterSpacing: '0.5px' }}>FIXED PRICE</p>
+                      </div>
+                    </div>
+                    
+                    <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#142175', marginBottom: '12px', paddingRight: '80px' }}>
+                      {project.title}
+                    </h3>
+                    
+                    <p style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5', marginBottom: '16px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {project.description}
+                    </p>
+                    
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                      {project.skillsRequired?.slice(0, 4).map(skill => (
+                        <span key={skill} style={{ background: '#f1f5f9', color: '#475569', fontSize: '12px', padding: '6px 12px', borderRadius: '6px', fontWeight: '500' }}>{skill}</span>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ background: '#d1fae5', color: '#065f46', fontSize: '11px', padding: '4px 8px', borderRadius: '4px', fontWeight: '700' }}>VERIFIED CLIENT</span>
+                        <span style={{ background: '#f0f9ff', color: '#0369a1', fontSize: '12px', padding: '4px 8px', borderRadius: '4px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          ⭐ 4.9 <span style={{ color: '#94a3b8', fontSize: '11px' }}>(12)</span>
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <button style={{
+                      position: 'absolute', top: '70px', right: '24px', width: '36px', height: '36px',
+                      borderRadius: '50%', border: '1px solid #e2e8f0', background: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8'
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>bookmark_border</span>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+          </div>
         </div>
       </main>
-
-      {/* Floating Action Button (FAB) - Desktop Only contextually for job search */}
-      {isClient && (
-        <div className="hidden lg:block fixed bottom-10 right-10 z-40">
-          <Link to="/projects/new" className="bg-secondary text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group">
-            <span className="material-symbols-outlined">add</span>
-            <span className="absolute right-full mr-4 bg-primary text-white px-4 py-2 rounded-lg text-label-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              Post a Project
-            </span>
-          </Link>
-        </div>
-      )}
     </div>
   );
 };
